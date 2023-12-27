@@ -11,11 +11,11 @@ Kompira Enterprise は IT 運用管理業務の自動化を支援するための
 
 * [オンプレシングル (all in one)][allinone]
 * [オンプレシングル (DB外部接続)][withoutdb]
-* [Azure Container Instances デプロイ][azureaci]
+* [Azure Container Instances デプロイ][azureci]
 
 [allinone]: https://github.com/fixpoint/ke-docker/allinone
 [withoutdb]: https://github.com/fixpoint/ke-docker/withoutdb
-[azureaci]: https://github.com/fixpoint/ke-docker/azureaci
+[azureci]: https://github.com/fixpoint/ke-docker/azureci
 
 ## 3. クイックスタート
 
@@ -23,8 +23,8 @@ Docker と git コマンドがインストールされているサーバ上で�
 
 $ git clone https://github.com/fixpoint/ke-docker.git
 $ cd ke-docker/allinone
-$ docker compose pull
-$ docker compose up -d
+$ LOCAL_UID=$UID LOCAL_GID=$(id -g) docker compose pull
+$ LOCAL_UID=$UID LOCAL_GID=$(id -g) docker compose up -d
 
 ブラウザから Docker コンテナが動作しているサーバにアクセス (https://<サーバのアドレス>/.login) するとログイン画面が表示されるので、以下のアカウントでログインすることで Kompira をはじめることができます。
 

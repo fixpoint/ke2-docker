@@ -1,0 +1,75 @@
+#--------------------------------------------------------------------
+# kompira_audit.yaml
+#
+# Configuration file to control audit log output.
+#--------------------------------------------------------------------
+#
+# logging_level: recording level value
+#
+# If the calculated operation level value is less than the recording
+# level value, no audit log will be recorded.
+#
+logging_level: 2
+
+#
+# operation_levels: basic operation level table
+#
+# Table of operation level reference values for each operation.
+# The operation level value for an operation is the maximum of
+# several operation level criteria values.
+#
+operation_levels:
+  interface:
+    web: 1
+    api: 1
+    mng: 2
+  class:
+    session: 3
+    user: 3
+    group: 3
+    object: 1
+    task: 1
+    incident: 1
+    process: 1
+    schedule: 1
+    packages: 1
+  type:
+    login: 3
+    logout: 3
+    create: 3
+    rename: 3
+    copy: 3
+    move: 3
+    export: 3
+    import: 3
+    execute: 3
+    suspend: 3
+    resume: 3
+    terminate: 3
+    read: 1
+    list: 1
+    search: 1
+    new: 1
+    edit: 1
+    confirm: 1
+    update: 2
+    clear: 2
+    recv: 2
+    send: 2
+    delete: 3
+  permit:
+    allowed: 1
+    denied: 3
+  result:
+    succeeded: 1
+    failed: 1
+
+#
+# target_levels: operation level table for object operation
+#
+# Operation level reference value to be applied to each target
+# during object manipulation.
+#
+target_levels:
+  - {path: '/config/*', type: null, level: 2}
+  - {path: '/system/*', type: '/system/types/Config', level: 2}
