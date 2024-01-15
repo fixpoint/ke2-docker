@@ -35,3 +35,16 @@ $ docker compose down -v
 
 -v オプションを指定しない場合、コンテナのみ削除され、データは残されます。
 したがって、再び docker compose up -d 開始すると、以前のデータにアクセスすることができます。
+
+
+## SSLの設定
+
+Nginx と RabbitMQ で SSL を利用するには、ホスト側の ke-docker/ssl ディレクトリに以下の証明書を用意します。
+
+- server.crt	  # サーバ証明書
+- server.key	  # 秘密鍵
+- ca.crt	  # 中間CA証明書
+
+docker-compose.override.yml.sample を docker-compose.override.yml にコピーしてから、以下のコマンドを実行します。
+
+$ docker compose up -d
