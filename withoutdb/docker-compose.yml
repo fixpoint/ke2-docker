@@ -19,6 +19,7 @@ services:
       - DATABASE_URL=pgsql://kompira:kompira@host.docker.internal:5432/kompira
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - CACHE_URL=redis://redis:6379
+      - TZ=Asia/Tokyo
     volumes:
       - kompira_var:/var/opt/kompira
       - ../configs/kompira_audit.yaml:/opt/kompira/kompira_audit.yaml:ro
@@ -42,6 +43,7 @@ services:
       - DATABASE_URL=pgsql://kompira:kompira@host.docker.internal:5432/kompira
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
       - CACHE_URL=redis://redis:6379
+      - TZ=Asia/Tokyo
     volumes:
       - kompira_var:/var/opt/kompira
       - ../configs/kompira_audit.yaml:/opt/kompira/kompira_audit.yaml:ro
