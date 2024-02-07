@@ -1,0 +1,105 @@
+services:
+  kompira:
+    container_name: kompira-app
+    image: kompira.azurecr.io/kompira-enterprise:latest
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - CACHE_URL=redis://redis:6379
+      - TZ=Asia/Tokyo
+    volumes:
+      - kompira-var:/var/opt/kompira
+    command: ["docker-entrypoint.sh", "uwsgi"]
+    stop_signal: SIGINT
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      - kengine
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+  kengine:
+    container_name: kompira-engine
+    image: kompira.azurecr.io/kompira-enterprise:latest
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672
+      - CACHE_URL=redis://redis:6379
+      - TZ=Asia/Tokyo
+    volumes:
+      - kompira-var:/var/opt/kompira
+    command: ["docker-entrypoint.sh", "kompirad"]
+    ulimits:
+      nproc: 65535
+      nofile: 65535
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      - rabbitmq
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+  jobmngrd:
+    container_name: kompira-jobmngr
+    image: kompira.azurecr.io/kompira-enterprise:latest
+    volumes:
+      - kompira-var:/var/opt/kompira
+    command: ["docker-entrypoint.sh", "jobmngrd"]
+    ulimits:
+      nproc: 65535
+      nofile: 65535
+    depends_on:
+      - rabbitmq
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+  redis:
+    container_name: kompira-cache
+    image: registry.hub.docker.com/library/redis:7.2-alpine
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+  nginx:
+    container_name: kompira-web
+    image: registry.hub.docker.com/library/nginx:1.25-alpine
+    volumes:
+      - kompira-var:/var/opt/kompira
+      - kompira-nginx-conf:/etc/nginx/conf.d
+    ports:
+      - "80:80"
+    depends_on:
+      - kompira
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+  rabbitmq:
+    container_name: kompira-mq
+    hostname: rabbitmq-server
+    image: registry.hub.docker.com/library/rabbitmq:3.12-alpine
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+
+volumes:
+  kompira-var:
+    driver: azure_file
+    driver_opts:
+      share_name: kompira-var
+      storage_account_name: ${STORAGE_ACCOUNT_NAME}
+  kompira-nginx-conf:
+    driver: azure_file
+    driver_opts:
+      share_name: kompira-nginx-conf
+      storage_account_name: ${STORAGE_ACCOUNT_NAME}
