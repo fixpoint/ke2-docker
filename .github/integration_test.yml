@@ -1,0 +1,20 @@
+name: Integration Test
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch: # for manual trigger
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: execute integration test
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+            workflow: integration_test.yml
+            repo: fixpoint/kompira-v2
+            ref: "develop"
+            token: ${{ secrets.GH_PAT }}
+            inputs: '{ "tag-name": "kedocker_integration_test" }'
