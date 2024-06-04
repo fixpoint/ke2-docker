@@ -12,10 +12,12 @@ Kompira Enterprise は IT 運用管理業務の自動化を支援するための
 * [オンプレシングル (all in one)][allinone]
 * [オンプレシングル (DB外部接続)][withoutdb]
 * [Azure Container Instances デプロイ][azureci]
+* [マルチエンジン Swarm デプロイ][swarm]
 
 [allinone]: https://github.com/fixpoint/ke-docker/allinone
 [withoutdb]: https://github.com/fixpoint/ke-docker/withoutdb
 [azureci]: https://github.com/fixpoint/ke-docker/azureci
+[swarm]: https://github.com/fixpoint/ke-docker/swarm
 
 ## 3. クイックスタート
 
