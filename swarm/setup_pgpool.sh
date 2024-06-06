@@ -8,7 +8,7 @@
 
 set -eu  # 未定義変数のチェック、コマンドエラー時は処理中断
 
-: ${CLUSTER_HOSTS:=ke2dev-swarm2 ke2dev-swarm1 ke2dev-swarm3}
+: ${CLUSTER_HOSTS:=ke2dev-swarm1 ke2dev-swarm2 ke2dev-swarm3}
 : ${CLUSTER_VIP:=10.20.1.100}
 : ${IF_NAME:=ens33}
 : ${HOST_NAME:=$(hostname)}
@@ -76,7 +76,7 @@ dnf config-manager --set-enabled crb
 # PostgreSQLコミュニティのリポジトリからPgpool-IIをインストールしないように
 # /etc/yum.repos.d/pgdg-redhat-all.repoにexclude設定を行う。
 #
-patch -N /etc/yum.repos.d/pgdg-redhat-all.repo <<'EOF' || echo 'パッチ適用に失敗'
+patch -N /etc/yum.repos.d/pgdg-redhat-all.repo <<'EOF' || echo 'pgdg-redhat-all.repo のパッチ適用に失敗しました'
 --- /etc/yum.repos.d/pgdg-redhat-all.repo	2024-04-10 16:00:02.000000000 +0900
 +++ pgdg-redhat-all.repo	2024-06-05 08:27:26.531561739 +0900
 @@ -8,6 +8,7 @@
@@ -236,6 +236,7 @@ EOF
     createuser -U ${PG_USER} -e ${PG_POOL_USER}
     createuser -U ${PG_USER} -e ${PG_REPL_USER} --replication
     createuser -U ${PG_USER} -e ${PG_KOMPIRA_USER} --createdb
+    psql -U ${PG_USER} -c "ALTER ROLE ${PG_USER} PASSWORD '${PG_PASS}'"
     psql -U ${PG_USER} -c "ALTER ROLE ${PG_REPL_USER} PASSWORD '${PG_REPL_PASS}'"
     psql -U ${PG_USER} -c "ALTER ROLE ${PG_POOL_USER} PASSWORD '${PG_POOL_PASS}'"
     psql -U ${PG_USER} -c "ALTER ROLE ${PG_KOMPIRA_USER} PASSWORD '${PG_KOMPIRA_PASS}'"
@@ -256,6 +257,10 @@ EOF
 +host    replication     all             samenet                 scram-sha-256
 +host    kompira         kompira         samenet                 scram-sha-256
 EOF
+    #
+    # pg_hba.conf を修正したので、PostgreSQL を起動する
+    #
+    su - postgres -c '/usr/pgsql-16/bin/pg_ctl restart -D ${PGDATA}'
 else
     #
     # スタンバイサーバは、後ほどオンラインリカバリ機能を用いてセットアップする
@@ -282,17 +287,6 @@ su - postgres -c "(cd .ssh && (yes | ssh-keygen -t rsa -f ${SSH_KEYFILE_NAME} -N
 su - postgres -c 'restorecon -Rv ~/.ssh'
 
 #
-# 自ホストの postgres ユーザーの SSH 公開鍵ファイルをクラスタの他のホストの authorized_keys に追加する
-#
-for host in ${CLUSTER_HOSTS}; do
-    if [[ ${HOST_NAME} == ${host} ]]; then
-	continue
-    fi
-    KEY_DATA=$(cat /var/lib/pgsql/.ssh/${SSH_KEYFILE_NAME}.pub)
-    ssh -t ${LOGIN_USER}@${host} sudo -i -u postgres sh -c "'grep -qs ${HOST_NAME} ~/.ssh/authorized_keys || (mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo ${KEY_DATA} >> ~/.ssh/authorized_keys && restorecon -Rv ~/.ssh)'"
-done
-
-#
 # .pgpassの作成
 #
 # パスワード入力なしで、ストリーミングレプリケーションやpg_rewindを実
@@ -302,7 +296,7 @@ done
 PG_PASS_FILE=/var/lib/pgsql/.pgpass
 for host in ${CLUSTER_HOSTS}; do
     su - postgres -c "grep -qs '${host}:5432:replication:${PG_REPL_USER}:' ${PG_PASS_FILE} || echo '${host}:5432:replication:${PG_REPL_USER}:${PG_REPL_PASS}' >> ${PG_PASS_FILE}"
-    su - postgres -c "grep -qs '${host}:5432:postgresl:${PG_USER}:' ${PG_PASS_FILE} || echo '${host}:5432:postgresl:${PG_USER}:${PG_PASS}' >> ${PG_PASS_FILE}"
+    su - postgres -c "grep -qs '${host}:5432:postgres:${PG_USER}:' ${PG_PASS_FILE} || echo '${host}:5432:postgres:${PG_USER}:${PG_PASS}' >> ${PG_PASS_FILE}"
 done
 chmod 600 /var/lib/pgsql/.pgpass
 
@@ -348,7 +342,7 @@ grep -qs "${PG_POOL_USER}:" ${PCP_CONF_FILE} || echo "${PG_POOL_USER}:$(pg_md5 $
 # pgpool.confファイルを他のpgpoolノードにコピーすれば良いです。
 #
 PGPOOL_CONF_FILE=/etc/pgpool-II/pgpool.conf
-patch -N ${PGPOOL_CONF_FILE} <<'EOF'
+patch -N ${PGPOOL_CONF_FILE} <<EOF
 --- pgpool.conf.orig	2024-06-06 11:24:23.607627712 +0900
 +++ /etc/pgpool-II/pgpool.conf	2024-06-06 13:35:06.475194279 +0900
 @@ -32,7 +32,7 @@
@@ -520,7 +514,7 @@ for host in ${CLUSTER_HOSTS}; do
 backend_hostname${i} = '${host}'
 backend_port${i} = 5432
 backend_weight${i} = 1
-backend_data_directory{$i} = '/var/lib/pgsql/16/data'
+backend_data_directory${i} = '/var/lib/pgsql/16/data'
 backend_flag${i} = 'ALLOW_TO_FAILOVER'
 backend_application_name${i} = '${host}'
 # - Watchdog communication Settings for ${host} -
@@ -616,7 +610,7 @@ ${PG_POOL_USER}:${PG_POOL_PASS}
 ${PG_USER}:${PG_PASS}
 ${PG_KOMPIRA_USER}:${PG_KOMPIRA_PASS}
 EOF
-su - postgres -c "pg_enc -m -i ${TMP_POOL_USERS_FILE}"
+su - postgres -c "pg_enc -m -k ~/.pgpoolkey -i ${TMP_POOL_USERS_FILE}"
 rm ${TMP_POOL_USERS_FILE}
 
 #
