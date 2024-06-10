@@ -17,14 +17,14 @@ Docker コンテナで動作させます。
 
 (1) kompira ユーザーとデータベースの作成
 
-kompira ユーザを作成します。kompira ユーザはスーパーユーザー権限が必要です。kompira ユーザのパスワードを入力してください。
+kompira ユーザを作成します。kompira ユーザのパスワードを入力してください。
 （附属の docker-compose.yml では、パスワードは kompira としていますので、必要に応じて docker-compose.yml の DATABASE_URL 環境変数のパスワードを変更してください)
 
-    $ sudo -i -u postgres createuser -d -s -P kompira
+    $ sudo -i -u postgres createuser -d -P kompira
 
-kompira データベースを作成します。
+kompira データベースを作成します。(データベースのオーナーは kompira ユーザーに設定します)
     
-    $ sudo -i -u postgres createdb --encoding=utf8 kompira
+    $ sudo -i -u postgres createdb --owner=kompira --encoding=utf8 kompira
 
 (2) PostgreSQL サーバの接続設定
 
@@ -36,9 +36,9 @@ listen_address を以下のように設定します。
 
 kompira ユーザからパスワード接続できるように、pg_hba.conf (RHEL/CentOS で標準パッケージをインストールした場合 /var/lib/pgsql/data/pg_hba.conf) に
 以下のエントリを追加します。
-(ここでは docker compose によって作成される docker network のアドレスが 172.0.0.0/8 に含まれることを想定しています。お使いの環境によって適切なアドレスに置き換えてください)
+(ここでは Docker が動作しているホストの IP アドレスとPostgreSQL サーバの IP アドレスが同じネットワーク上に配置されていることを想定しています。お使いの環境によって適切なアドレスに置き換えてください)
 
-    host    kompira         kompira         172.0.0.0/8             scram-sha-256
+    host    kompira         kompira         samenet             scram-sha-256
 
 上記の設定後、 postgresql サービスを再起動する必要があります。
 
