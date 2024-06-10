@@ -2,8 +2,10 @@ services:
   fluentd:
     image: kompira.azurecr.io/fluentd-with-rewrite-plugin:latest
     volumes:
-      - ${SHARED_DIR:-/mnt/gluster/ke2me}/configs/fluentd.conf:/fluentd/etc/fluent.conf:ro
       - ${SHARED_DIR:-/mnt/gluster/ke2me}/log:/var/log/fluentd
+    configs:
+      - source: fluentd-config
+        target: /fluentd/etc/fluent.conf
     environment:
       TZ: ${TZ:-Asia/Tokyo}
       LOCAL_UID: ${LOCAL_UID:?LOCAL_UID must be set, try "export LOCAL_UID=$$(id -u $${USER})"}
@@ -25,7 +27,9 @@ services:
       - TZ=${TZ:-Asia/Tokyo}
     volumes:
       - ${SHARED_DIR:-/mnt/gluster/ke2me}/home:/var/opt/kompira
-      - ${SHARED_DIR:-/mnt/gluster/ke2me}/configs/kompira_audit.yaml:/opt/kompira/kompira_audit.yaml:ro
+    configs:
+      - source: kompira-audit
+        target: /opt/kompira/kompira_audit.yaml
     command: ["uwsgi"]
     stop_signal: SIGINT
     extra_hosts:
@@ -50,7 +54,9 @@ services:
       - TZ=${TZ:-Asia/Tokyo}
     volumes:
       - ${SHARED_DIR:-/mnt/gluster/ke2me}/home:/var/opt/kompira
-      - ${SHARED_DIR:-/mnt/gluster/ke2me}/configs/kompira_audit.yaml:/opt/kompira/kompira_audit.yaml:ro
+    configs:
+      - source: kompira-audit
+        target: /opt/kompira/kompira_audit.yaml
     command: ["kompirad"]
     ulimits:
       nproc: 65535
@@ -73,7 +79,9 @@ services:
       - TZ=${TZ:-Asia/Tokyo}
     volumes:
       - ${SHARED_DIR:-/mnt/gluster/ke2me}/home:/var/opt/kompira
-      - ${SHARED_DIR:-/mnt/gluster/ke2me}/configs/kompira.conf:/opt/kompira/kompira.conf:ro
+    configs:
+      - source: kompira-config
+        target: /opt/kompira/kompira.conf
     command: ["jobmngrd"]
     ulimits:
       nproc: 65535
@@ -110,7 +118,9 @@ services:
       - TZ=${TZ:-Asia/Tokyo}
     volumes:
       - ${SHARED_DIR:-/mnt/gluster/ke2me}/home:/var/opt/kompira
-      - ${SHARED_DIR:-/mnt/gluster/ke2me}/configs/nginx-default.conf:/etc/nginx/conf.d/default.conf:ro
+    configs:
+      - source: nginx-config-default
+        target: /etc/nginx/conf.d/default.conf
     ports:
       - "80:80"
     logging:
@@ -145,3 +155,13 @@ services:
 volumes:
   kompira_mq:
   kompira_redis:
+
+configs:
+  fluentd-config:
+    file: ../configs/fluentd-swarm.conf
+  nginx-config-default:
+    file: ../configs/nginx-default.conf
+  kompira-audit:
+    file: ../configs/kompira_audit.yaml
+  kompira-config:
+    file: ../configs/kompira.conf
