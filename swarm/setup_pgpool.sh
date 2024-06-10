@@ -8,9 +8,10 @@
 
 set -eu  # 未定義変数のチェック、コマンドエラー時は処理中断
 
-: ${CLUSTER_HOSTS:=ke2dev-swarm1 ke2dev-swarm2 ke2dev-swarm3}
-: ${CLUSTER_VIP:=10.20.1.100}
-: ${IF_NAME:=ens33}
+: ${CLUSTER_HOSTS:?Undefined environment variable. Example: export CLUSTER_HOSTS="'server1 server2 server3'"}
+: ${CLUSTER_VIP:?Undefined environment variable. Example: export CLUSTER_VIP=10.20.0.1}
+
+: ${IF_NAME:=$(ip -br link |grep -v LOOPBACK | grep -v DOWN | while read ifname _rem; do echo $ifname; break; done)}
 : ${HOST_NAME:=$(hostname)}
 
 : ${PG_USER:=postgres}
@@ -22,6 +23,7 @@ set -eu  # 未定義変数のチェック、コマンドエラー時は処理中
 : ${PG_KOMPIRA_USER:=kompira}
 : ${PG_KOMPIRA_PASS:=${PG_KOMPIRA_USER}}
 : ${PG_POOL_KEY:=ke2pgpoolkey}
+: ${PG_KOMPIRA_DB:=kompira}
 
 #
 # root ユーザに切り替える
@@ -31,7 +33,6 @@ if [[ ${USER} != "root" ]]; then
     sudo -E su -m -c ${0}
     exit $?
 fi
-: ${LOGIN_USER:=${SUDO_USER}}
 
 #
 # Pgpool-II ノードIDの設定
@@ -146,7 +147,7 @@ PGDATA=$(su - postgres -c 'echo ${PGDATA}') # PGDATA 環境変数を postgres �
 # プライマリサーバで PostgreSQL の初期化を行う
 #
 if ${IS_PRIMARY_MODE}; then
-    su - postgres -c '/usr/pgsql-16/bin/initdb -D ${PGDATA}'
+    postgresql-16-setup initdb
     #
     # 設定ファイル $PGDATA/postgresql.conf を以下のように編集する。
     # ---
@@ -231,27 +232,31 @@ EOF
     #  - repl/repl: PostgreSQL のレプリケーション専用
     #  - pgpool/pgpool: Pgpool-IIのレプリケーション遅延チェック(sr_check_user)、 ヘルスチェック専用ユーザ(health_check_user)。pg_monitorグループに所属させる
     #  - postgres/postgres: オンラインリカバリの実行ユーザ
-    #  - kompira/kompira: Kompira アクセス用ユーザ
+    #  - kompira/kompira: Kompira アクセス用ユーザ (スーパーユーザ権限が必要)
     #
-    createuser -U ${PG_USER} -e ${PG_POOL_USER}
-    createuser -U ${PG_USER} -e ${PG_REPL_USER} --replication
-    createuser -U ${PG_USER} -e ${PG_KOMPIRA_USER} --createdb
-    psql -U ${PG_USER} -c "ALTER ROLE ${PG_USER} PASSWORD '${PG_PASS}'"
-    psql -U ${PG_USER} -c "ALTER ROLE ${PG_REPL_USER} PASSWORD '${PG_REPL_PASS}'"
-    psql -U ${PG_USER} -c "ALTER ROLE ${PG_POOL_USER} PASSWORD '${PG_POOL_PASS}'"
-    psql -U ${PG_USER} -c "ALTER ROLE ${PG_KOMPIRA_USER} PASSWORD '${PG_KOMPIRA_PASS}'"
-    psql -U ${PG_USER} -c "GRANT pg_monitor TO ${PG_POOL_USER}"
+    sudo -i -u postgres createuser -e ${PG_POOL_USER}
+    sudo -i -u postgres createuser -e ${PG_REPL_USER} --replication
+    sudo -i -u postgres createuser -e ${PG_KOMPIRA_USER} --createdb
+    sudo -i -u postgres psql -c "ALTER ROLE ${PG_USER} PASSWORD '${PG_PASS}'"
+    sudo -i -u postgres psql -c "ALTER ROLE ${PG_REPL_USER} PASSWORD '${PG_REPL_PASS}'"
+    sudo -i -u postgres psql -c "ALTER ROLE ${PG_POOL_USER} PASSWORD '${PG_POOL_PASS}'"
+    sudo -i -u postgres psql -c "ALTER ROLE ${PG_KOMPIRA_USER} PASSWORD '${PG_KOMPIRA_PASS}'"
+    sudo -i -u postgres psql -c "GRANT pg_monitor TO ${PG_POOL_USER}"
+    #
+    # Kompira用データベースを作成する
+    #
+    sudo -i -u postgres createdb  --owner=${PG_KOMPIRA_USER} --encoding=utf8 ${PG_KOMPIRA_DB}
     #
     # Pgpool-IIサーバとPostgreSQLバックエンドサーバが同じサブネットワークにあることを想定し、
     # 各ユーザがscram-sha-256認証方式で接続するように、pg_hba.confを編集する
     #
     patch -N ${PGDATA}/pg_hba.conf <<'EOF'
---- /var/lib/pgsql/16/data/pg_hba.conf	2024-06-05 10:05:27.026407474 +0900
-+++ pg_hba.conf	2024-06-05 10:43:49.540925903 +0900
-@@ -124,3 +124,7 @@
- local   replication     all                                     trust
- host    replication     all             127.0.0.1/32            trust
- host    replication     all             ::1/128                 trust
+--- /var/lib/pgsql/16/data/pg_hba.conf  2024-06-10 13:36:50.813464708 +0900
++++ pg_hba.conf 2024-06-10 13:38:07.108605215 +0900
+@@ -120,3 +120,7 @@
+ local   replication     all                                     peer
+ host    replication     all             127.0.0.1/32            scram-sha-256
+ host    replication     all             ::1/128                 scram-sha-256
 +host    all             pgpool          samenet                 scram-sha-256
 +host    all             postgres        samenet                 scram-sha-256
 +host    replication     all             samenet                 scram-sha-256
@@ -554,7 +559,6 @@ EOF
 # を実行できるように、すべてのサーバでPgpool-IIの起動ユーザのホームディ
 # レクトリに.pcppassを作成します。
 #
-# su - postgres
 su - postgres -c "echo 'localhost:9898:${PG_POOL_USER}:${PG_POOL_PASS}' > ~/.pcppass && chmod 600 ~/.pcppass"
 
 if ${IS_PRIMARY_MODE}; then
@@ -571,7 +575,7 @@ if ${IS_PRIMARY_MODE}; then
     # pgpool_remote_start、pgpool_switch_xlogという関数が必要になるので、
     # ke2-swarm1のtemplate1にpgpool_recoveryをインストールしておきます。
     #
-    su - postgres -c 'psql template1 -c "CREATE EXTENSION pgpool_recovery"'
+    sudo -i -u postgres psql template1 -c "CREATE EXTENSION pgpool_recovery"
 fi
 
 #

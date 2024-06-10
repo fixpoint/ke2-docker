@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu  # 未定義変数のチェック、コマンドエラー時は処理中断
 
-: ${CLUSTER_HOSTS:=ke2dev-swarm1 ke2dev-swarm2 ke2dev-swarm3}
+: ${CLUSTER_HOSTS:?Undefined environment variable. Example: export CLUSTER_HOSTS="'server1 server2 server3'"}
 : ${HOST_NAME:=$(hostname)}
 
 #
