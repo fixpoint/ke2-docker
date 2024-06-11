@@ -604,3 +604,10 @@ rm ${TMP_POOL_USERS_FILE}
 #
 mkdir -p /var/log/pgpool_log
 chown postgres:postgres /var/log/pgpool_log
+
+echo "======================================================="
+echo " PostgreSQL/Pgpool-II のセットアップが終了しました。"
+echo ""
+echo " すべてのホストで setup_pgpool.sh の実行が終了した後、"
+echo " 各ホスト上で改めて post_setup.sh を実行してください。"
+echo "======================================================="
