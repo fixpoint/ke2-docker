@@ -273,25 +273,6 @@ else
     :
 fi
 #
-# SSH公開鍵認証の設定
-#
-# 自動フェイルオーバ、オンラインリカバリ機能を利用するには、すべての
-# Pgpool-IIノード間でpostgresユーザ（Pgpool-IIのデフォルトの起動ユーザ。
-# Pgpool-II 4.0以前、デフォルトの起動ユーザはroot）として双方向にSSH公
-# 開鍵認証（パスワードなし）で接続できるように設定する必要があります。
-#
-# SSH鍵ファイルを作成します。 この設定例では生成される鍵ファイル名はid_rsa_pgpoolとします。
-#
-SSH_KEYFILE_NAME=id_rsa_pgpool
-su - postgres -c "mkdir -p ~/.ssh && chmod 700 ~/.ssh"
-su - postgres -c "(cd .ssh && (yes | ssh-keygen -t rsa -f ${SSH_KEYFILE_NAME} -N ''))"
-#
-# SELinuxを有効化している場合は、SSH公開鍵認証(パスワードなし)が失敗す
-# る可能性があるので、すべてのサーバで以下のコマンドを実行する。
-#
-su - postgres -c 'restorecon -Rv ~/.ssh'
-
-#
 # .pgpassの作成
 #
 # パスワード入力なしで、ストリーミングレプリケーションやpg_rewindを実
