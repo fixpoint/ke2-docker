@@ -134,12 +134,16 @@ services:
     deploy:
       mode: global
   rabbitmq:
-    hostname: rabbitmq-server
+    hostname: "rabbitmq-{{.Task.Slot}}"
     image: rabbitmq:3.12-alpine
     volumes:
       - kompira_mq:/var/lib/rabbitmq     # volume名を明示的に指定 (指定しないとハッシュ化された文字列のボリューム名が使われてゴミが増える)
+    configs:
+      - source: rabbitmq-config
+        target: /etc/rabbitmq/rabbitmq.conf
     environment:
       RABBITMQ_DATA_DIR: /var/lib/rabbitmq    # デフォルト値なので指定不要だが、ボリュームのマウントポイントと一致させるために明示的に指定しておく
+      RABBITMQ_ERLANG_COOKIE: SECRET_COOKIE
       TZ: ${TZ:-Asia/Tokyo}
     logging:
       driver: fluentd
@@ -150,7 +154,9 @@ services:
       - fluentd
     deploy:
       mode: replicated
-      replicas: 1
+      replicas: 3
+      placement:
+        max_replicas_per_node: 1
 
 volumes:
   kompira_mq:
@@ -165,3 +171,5 @@ configs:
     file: ../configs/kompira_audit.yaml
   kompira-config:
     file: ../configs/kompira.conf
+  rabbitmq-config:
+    file: ../configs/rabbitmq-cluster.conf
