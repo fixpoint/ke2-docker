@@ -82,7 +82,7 @@ Docker の公式リポジトリを追加し、Docker CE を各ホストにイン
 [全ホスト]$ sudo firewall-cmd --permanent --add-port=2377/tcp
 [全ホスト]$ sudo firewall-cmd --permanent --add-port=7946/tcp --add-port=7946/udp
 [全ホスト]$ sudo firewall-cmd --permanent --add-port=4789/udp
-[全ホスト]$ firewall-cmd --reload
+[全ホスト]$ sudo firewall-cmd --reload
 ```
 
 #### クラスタの初期化
