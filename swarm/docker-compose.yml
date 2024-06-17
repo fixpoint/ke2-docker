@@ -19,6 +19,7 @@ services:
       replicas: 1
   kompira:
     image: ${IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${IMAGE_TAG:-latest}
+    hostname: "kompira-{{.Task.Slot}}"
     environment:
       - DATABASE_URL=pgsql://kompira:kompira@${VIP:-host.docker.internal}:9999/kompira
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
@@ -43,9 +44,13 @@ services:
       - fluentd
       - kengine
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 3
+      placement:
+        max_replicas_per_node: 1
   kengine:
     image: ${IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${IMAGE_TAG:-latest}
+    hostname: "kengine-{{.Task.Slot}}"
     environment:
       - DATABASE_URL=pgsql://kompira:kompira@${VIP:-host.docker.internal}:9999/kompira
       - AMQP_URL=amqp://guest:guest@rabbitmq:5672
@@ -72,9 +77,13 @@ services:
       - fluentd
       - rabbitmq
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 3
+      placement:
+        max_replicas_per_node: 1
   jobmngrd:
     image: ${IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${IMAGE_TAG:-latest}
+    hostname: "jobmngrd-{{.Task.Slot}}"
     environment:
       - TZ=${TZ:-Asia/Tokyo}
     volumes:
@@ -95,7 +104,10 @@ services:
       - fluentd
       - rabbitmq
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 3
+      placement:
+        max_replicas_per_node: 1
   redis:
     image: redis:7.2-alpine
     environment:
@@ -114,6 +126,7 @@ services:
       replicas: 1
   nginx:
     image: nginx:1.25-alpine
+    hostname: "nginx-{{.Task.Slot}}"
     environment:
       - TZ=${TZ:-Asia/Tokyo}
     volumes:
@@ -132,10 +145,13 @@ services:
       - fluentd
       - kompira
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 3
+      placement:
+        max_replicas_per_node: 1
   rabbitmq:
-    hostname: "rabbitmq-{{.Task.Slot}}"
     image: rabbitmq:3.12-alpine
+    hostname: "rabbitmq-{{.Task.Slot}}"
     volumes:
       - kompira_mq:/var/lib/rabbitmq     # volume名を明示的に指定 (指定しないとハッシュ化された文字列のボリューム名が使われてゴミが増える)
     configs:
