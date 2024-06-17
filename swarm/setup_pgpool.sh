@@ -55,7 +55,9 @@ fi
 # 必要なツール類のセットアップ
 #
 dnf update -y
-dnf install -y patch
+dnf install -y patch ipcalc
+
+: ${IF_PREFIX:=$(ipcalc -p $(echo $(ip addr show dev ${IF_NAME} | grep 'inet ') | cut -d ' ' -f 2) | cut -d '=' -f 2)}
 
 #
 # PostgreSQL コミュニティのリポジトリから PostgreSQL バージョン16 をインストールする
@@ -460,11 +462,11 @@ patch -N ${PGPOOL_CONF_FILE} <<EOF
                                      # If if_up/down_cmd starts with "/", if_cmd_path will be ignored.
                                      # (change requires restart)
 -#if_up_cmd = '/usr/bin/sudo /sbin/ip addr add \$_IP_\$/24 dev eth0 label eth0:0'
-+if_up_cmd = '/usr/bin/sudo /sbin/ip addr add \$_IP_\$/24 dev ${IF_NAME} label ${IF_NAME}:0'
++if_up_cmd = '/usr/bin/sudo /sbin/ip addr add \$_IP_\$/${IF_PREFIX} dev ${IF_NAME} label ${IF_NAME}:0'
                                      # startup delegate IP command
                                      # (change requires restart)
 -#if_down_cmd = '/usr/bin/sudo /sbin/ip addr del \$_IP_\$/24 dev eth0'
-+if_down_cmd = '/usr/bin/sudo /sbin/ip addr del \$_IP_\$/24 dev ${IF_NAME}'
++if_down_cmd = '/usr/bin/sudo /sbin/ip addr del \$_IP_\$/${IF_PREFIX} dev ${IF_NAME}'
                                      # shutdown delegate IP command
                                      # (change requires restart)
  #arping_path = '/usr/sbin'
@@ -531,6 +533,7 @@ ed /etc/pgpool-II/escalation.sh <<EOF
 ,s/^PGPOOLS=.*/PGPOOLS=(${CLUSTER_HOSTS})/
 ,s/^VIP=.*/VIP=${CLUSTER_VIP}/
 ,s/^DEVICE=.*/DEVICE=${IF_NAME}/
+,s/\/24 dev/\/${IF_PREFIX} dev/
 w
 q
 EOF
