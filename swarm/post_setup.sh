@@ -38,6 +38,6 @@ su - postgres -c 'restorecon -Rv ~/.ssh'
 # 自ホストの postgres ユーザーの SSH 公開鍵ファイルをクラスタ上の各ホストの authorized_keys に追加する
 #
 for host in ${CLUSTER_HOSTS}; do
-   KEY_DATA=$(cat /var/lib/pgsql/.ssh/${SSH_KEYFILE_NAME}.pub)
-   ssh -t ${LOGIN_USER}@${host} sudo -i -u postgres sh -c "'sed -i.bak -e /postgres@${HOST_NAME}$/d ~/.ssh/authorized_keys; (mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo ${KEY_DATA} >> ~/.ssh/authorized_keys && restorecon -Rv ~/.ssh)'"
+    KEY_DATA=$(cat /var/lib/pgsql/.ssh/${SSH_KEYFILE_NAME}.pub)
+    ssh -t ${LOGIN_USER}@${host} sudo -i -u postgres sh -c "'sed -i.bak -e /postgres@${HOST_NAME}$/d ~/.ssh/authorized_keys 2> /dev/null; (mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo ${KEY_DATA} >> ~/.ssh/authorized_keys && restorecon -Rv ~/.ssh)'"
 done
