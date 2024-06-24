@@ -112,8 +112,6 @@ services:
     image: redis:7.2-alpine
     environment:
       - TZ=${TZ:-Asia/Tokyo}
-    volumes:
-      - kompira_redis:/data
     logging:
       driver: fluentd
       options:
@@ -153,7 +151,7 @@ services:
     image: rabbitmq:3.12-alpine
     hostname: "rabbitmq-{{.Task.Slot}}"
     volumes:
-      - kompira_mq:/var/lib/rabbitmq     # volume名を明示的に指定 (指定しないとハッシュ化された文字列のボリューム名が使われてゴミが増える)
+      - /var/lib/rabbitmq
     configs:
       - source: rabbitmq-config
         target: /etc/rabbitmq/rabbitmq.conf
@@ -173,10 +171,6 @@ services:
       replicas: 3
       placement:
         max_replicas_per_node: 1
-
-volumes:
-  kompira_mq:
-  kompira_redis:
 
 configs:
   fluentd-config:
