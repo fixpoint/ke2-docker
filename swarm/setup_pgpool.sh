@@ -554,6 +554,8 @@ if ${IS_PRIMARY_MODE}; then
     #
     su - postgres -c 'cp -p /etc/pgpool-II/sample_scripts/recovery_1st_stage.sample ${PGDATA}/recovery_1st_stage'
     su - postgres -c 'cp -p /etc/pgpool-II/sample_scripts/pgpool_remote_start.sample ${PGDATA}/pgpool_remote_start'
+    # ログが文字化けしないよう、LANG 環境変数をセットして pg_ctl を起動する
+    su - postgres -c "sed -i -e 's|\$PGHOME/bin/pg_ctl|LANG=\${LANG} \$PGHOME/bin/pg_ctl|' \${PGDATA}/pgpool_remote_start"
     #
     # オンラインリカバリ機能を使用するには、pgpool_recovery、
     # pgpool_remote_start、pgpool_switch_xlogという関数が必要になるので、
