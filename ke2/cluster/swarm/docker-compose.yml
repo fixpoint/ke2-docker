@@ -1,0 +1,8 @@
+# クラスタ Swarm 構成
+include:
+  - ../../services/fluentd.yml
+  - ../../services/redis.yml
+  - ../../services/rabbitmq_${SSL_MODE:-}ssl.yml
+  - ../../services/jobmngrd.yml
+  - ../../services/kompira.yml
+  - ../../services/nginx_${SSL_MODE:-}ssl.yml

@@ -1,0 +1,10 @@
+# シングル基本構成
+name: ke2
+include:
+  - ../../services/fluentd.yml
+  - ../../services/redis.yml
+  - ../../services/postgres.yml
+  - ../../services/rabbitmq_${SSL_MODE:-}ssl.yml
+  - ../../services/jobmngrd.yml
+  - ../../services/kompira.yml
+  - ../../services/nginx_${SSL_MODE:-}ssl.yml

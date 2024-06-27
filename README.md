@@ -9,15 +9,14 @@ Kompira Enterprise は IT 運用管理業務の自動化を支援するための
 
 このリポジトリには、以下の各種デプロイの構成に対応した Kompira Enterprise の **Docker Compose ファイル** が含まれています。
 
-* [オンプレシングル (all in one)][allinone]
-* [オンプレシングル (DB外部接続)][withoutdb]
-* [Azure Container Instances デプロイ][azureci]
-* [マルチエンジン Swarm デプロイ][swarm]
+* オンプレシングル
+    * [シングル標準構成](ke2/single/basic)
+    * [シングルDB外部構成](ke2/single/extdb)
+* オンプレクラスタ
+    * [クラスタSwarm構成](ke2/cluster/swarm)
+* クラウド
+    * [Azure Container Instances 構成](ke2/cloud/azureci)
 
-[allinone]: https://github.com/fixpoint/ke-docker/allinone
-[withoutdb]: https://github.com/fixpoint/ke-docker/withoutdb
-[azureci]: https://github.com/fixpoint/ke-docker/azureci
-[swarm]: https://github.com/fixpoint/ke-docker/swarm
 
 ## 3. クイックスタート
 
@@ -25,9 +24,9 @@ Docker エンジンと git コマンドがインストールされているサ�
 
 ```
 $ git clone https://github.com/fixpoint/ke-docker.git
-$ cd ke-docker/allinone
-$ export LOCAL_UID=$UID LOCAL_GID=$(id -g)
+$ cd ke-docker/ke2/single/basic
 $ docker compose pull
+$ ../../../scripts/create-cert.sh
 $ docker compose up -d
 ```
 
@@ -38,6 +37,8 @@ $ docker compose up -d
 * パスワード: `root`
 
 ログイン後の画面の右上にある「ヘルプ」をクリックすると、オンラインマニュアルが表示されますので使い方の参考にしてください。
+
+※ なお、上記手順の create-cert.sh では自己署名 SSL 証明書を生成しています。その SSL 証明書をコンテナ起動時に HTTPS および AMQPS に適用していますので、ブラウザでアクセスする際にセキュリティの警告が表示されます。
 
 ## 4. 準備と設定
 ### 4.1. Docker エンジンの準備
@@ -53,14 +54,12 @@ https://docs.docker.com/engine/install/
 各構成で独自の環境変数が定義されている場合もありますのでそれぞれの README.md を参照してください。
 
 
-| 環境変数        | 意味                        | デフォルト値                            | 備考                                                   |
-| --------------- | --------------------------- | --------------------------------------- | ------------------------------------------------------ |
-| `TZ`            | タイムゾーン                | "Asia/Tokyo"                            | 画面やログで表示される時刻のタイムゾーンを指定します   |
-| `LANGUAGE_CODE` | 言語コード ("ja" or "en")   | "ja"                                    | 初回起動時にインポートする初期データの言語を指定します |
-| `IMAGE_NAME`    | Kompira イメージ            | "kompira.azurecr.io/kompira-enterprise" | デプロイする Kompira コンテナのイメージを指定します    |
-| `IMAGE_TAG`     | Kompira タグ                | "latest"                                | デプロイする Kompira コンテナのタグを指定します        |
-| `LOCAL_UID`     | ローカル実行ユーザID        | (無し)                                  | fluentd コンテナを実行するユーザIDを指定します         |
-| `LOCAL_GID`     | ローカル実行グループID      | (無し)                                  | fluentd コンテナを実行するグループIDを指定します       |
+| 環境変数                | 意味                        | デフォルト値                            | 備考                                                   |
+| ----------------------- | --------------------------- | --------------------------------------- | ------------------------------------------------------ |
+| `TZ`                    | タイムゾーン                | "Asia/Tokyo"                            | 画面やログで表示される時刻のタイムゾーンを指定します   |
+| `LANGUAGE_CODE`         | 言語コード ("ja" or "en")   | "ja"                                    | 初回起動時にインポートする初期データの言語を指定します |
+| `KOMPIRA_IMAGE_NAME`    | Kompira イメージ            | "kompira.azurecr.io/kompira-enterprise" | デプロイする Kompira コンテナのイメージを指定します    |
+| `KOMPIRA_IMAGE_TAG`     | Kompira タグ                | "latest"                                | デプロイする Kompira コンテナのタグを指定します        |
 
 ## 5. Kompira ライセンス
 

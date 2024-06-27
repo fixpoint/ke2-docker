@@ -1,0 +1,31 @@
+services:
+  rabbitmq:
+    image: registry.hub.docker.com/library/rabbitmq:3.12-alpine
+    hostname: rabbitmq-server
+    volumes:
+      - kompira_mq:/var/lib/rabbitmq
+      - ${KOMPIRA_SSL_DIR:-../../ssl}:/run/.kompira_ssl
+    configs:
+      - source: rabbitmq-config-auth
+        target: /etc/rabbitmq/conf.d/20-auth.conf
+      - source: rabbitmq-config-ssl
+        target: /etc/rabbitmq/conf.d/30-ssl.conf
+    environment:
+      RABBITMQ_DATA_DIR: /var/lib/rabbitmq
+      TZ: ${TZ:-Asia/Tokyo}
+    command:
+      # MEMO: volumes では SSL 証明書の所有者を指定できない(BUG?)ので cp して chown している
+      # MEMO: rabbitmq-server 起動前にプラグイン rabbitmq_auth_mechanism_ssl を有効にしている
+      - /bin/sh
+      - -c
+      - /bin/cp -f -a -r -T /run/.kompira_ssl /etc/rabbitmq/ssl && chown -R rabbitmq:rabbitmq /etc/rabbitmq/ssl && rabbitmq-plugins enable rabbitmq_auth_mechanism_ssl && rabbitmq-server
+    ports:
+      # MEMO: 外部には AMQPS ポートだけオープンしている (AMQP 接続を許可する場合は 5672 もオープンにする)
+      - "5671:5671"
+volumes:
+  kompira_mq:
+configs:
+  rabbitmq-config-auth:
+    file: ../../configs/rabbitmq-auth.conf
+  rabbitmq-config-ssl:
+    file: ../../configs/rabbitmq-ssl.conf

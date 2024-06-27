@@ -1,0 +1,35 @@
+x-kompira-common:
+  &kompira-common
+  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-latest}
+  environment:
+    - DATABASE_URL=${DATABASE_URL:-pgsql://kompira:kompira@${DATABASE_HOST:-postgres}:5432/kompira}
+    - AMQP_URL=${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+    - CACHE_URL=${CACHE_URL:-redis://redis:6379}
+    - LANGUAGE_CODE=${LANGUAGE_CODE:-ja}
+    - TZ=${TZ:-Asia/Tokyo}
+  configs:
+    - source: kompira-audit
+      target: /opt/kompira/kompira_audit.yaml
+  volumes:
+    - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
+  extra_hosts:
+    - host.docker.internal:host-gateway
+
+services:
+  kengine:
+    <<: *kompira-common
+    hostname: kengine
+    command: ["kompirad"]
+    ulimits:
+      nproc: 65535
+      nofile: 65535
+  kompira:
+    <<: *kompira-common
+    hostname: kompira
+    command: ["uwsgi"]
+    stop_signal: SIGINT
+configs:
+  kompira-audit:
+    file: ../../configs/kompira_audit.yaml
+volumes:
+  kompira_var:

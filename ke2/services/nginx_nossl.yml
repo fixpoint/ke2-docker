@@ -1,0 +1,18 @@
+services:
+  nginx:
+    image: registry.hub.docker.com/library/nginx:1.25-alpine
+    hostname: nginx
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}
+    configs:
+      - source: nginx-config-default
+        target: /etc/nginx/conf.d/default.conf
+    volumes:
+      - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
+    ports:
+      - "80:80"
+configs:
+  nginx-config-default:
+    file: ../../configs/nginx-default.conf
+volumes:
+  kompira_var:

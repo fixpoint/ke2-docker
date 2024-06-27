@@ -352,13 +352,24 @@ ke2-server2 と ke2-server3 の PostgreSQL がスタンバイとして起動し�
 
 ## Kompira Enterpise システムのデプロイ
 
-Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコ
-マンドを実行して Kompira Enterprise 開始します。
+```
+VIP: <Pgpool-II の仮想IPアドレス>
+SHARED_DIR: <共有ディレクトリのパス>
+DATABASE_URL: <データベースのURL>
+```
+
+Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコマンドを実行して Kompira Enterprise 開始します。
 
 ```
-[いずれかのサーバ]$ export LOCAL_UID=$UID LOCAL_GID=$(id -g)
-[いずれかのサーバ]$ SHARED_DIR=<共有ディレクトリのパス> VIP=<Pgpool-II の仮想IPアドレス> docker stack deploy -c docker-compose.yml ke2me
+$ export VIP=10.20.0.100
+$ export SHARED_DIR=/mnt/gluster
+$ export DATABASE_URL="pgsql://kompira:kompira@$VIP:9999/kompira"
+$ mkdir -p $SHARED_DIR/{log,home}
+$ ./prepare_stack.sh
+$ docker stack deploy -c docker-swarm.yml ke2
 ```
+
+先頭3行で設定している環境変数については、準備した環境に合わせて書き換えてください。
 
 SHARED_DIR には、共有ファイルシステム上の共有ディレクトリを指定します。
 あらかじ、共有ディレクトリには以下のファイルやディレクトリを作成しておく必要があります。
@@ -374,5 +385,5 @@ SHARED_DIR には、共有ファイルシステム上の共有ディレクトリ
 Kompira Enterprise を停止するには以下のコマンドを実行します。
 
 ```
-$ docker stack rm ke2me
+$ docker stack rm ke2
 ```

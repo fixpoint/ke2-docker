@@ -1,0 +1,10 @@
+services:
+  redis:
+    image: registry.hub.docker.com/library/redis:7.2-alpine
+    hostname: redis
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}
+    volumes:
+      - kompira_redis:/data
+volumes:
+  kompira_redis:
