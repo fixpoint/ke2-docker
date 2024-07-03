@@ -3,9 +3,7 @@ services:
     image: registry.hub.docker.com/library/rabbitmq:3.12-alpine
     hostname: rabbitmq-server
     volumes:
-      - kompira_mq:/var/lib/rabbitmq
+      - /var/lib/rabbitmq
     environment:
       RABBITMQ_DATA_DIR: /var/lib/rabbitmq
       TZ: ${TZ:-Asia/Tokyo}
-volumes:
-  kompira_mq:

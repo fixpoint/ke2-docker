@@ -3,7 +3,7 @@ services:
     image: registry.hub.docker.com/library/rabbitmq:3.12-alpine
     hostname: rabbitmq-server
     volumes:
-      - kompira_mq:/var/lib/rabbitmq
+      - /var/lib/rabbitmq
       - ${KOMPIRA_SSL_DIR:-../../ssl}:/run/.kompira_ssl
     configs:
       - source: rabbitmq-config-auth
@@ -22,8 +22,6 @@ services:
     ports:
       # MEMO: 外部には AMQPS ポートだけオープンしている (AMQP 接続を許可する場合は 5672 もオープンにする)
       - "5671:5671"
-volumes:
-  kompira_mq:
 configs:
   rabbitmq-config-auth:
     file: ../../configs/rabbitmq-auth.conf

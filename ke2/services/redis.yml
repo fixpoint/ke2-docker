@@ -4,7 +4,3 @@ services:
     hostname: redis
     environment:
       - TZ=${TZ:-Asia/Tokyo}
-    volumes:
-      - kompira_redis:/data
-volumes:
-  kompira_redis:
