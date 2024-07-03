@@ -364,7 +364,7 @@ Docker Swarm クラスタを構成するいずれかのマネージャノード�
 $ export VIP=10.20.0.100
 $ export SHARED_DIR=/mnt/gluster
 $ export DATABASE_URL="pgsql://kompira:kompira@$VIP:9999/kompira"
-$ mkdir -p $SHARED_DIR/{log,home}
+$ mkdir -p $SHARED_DIR/{log,var,ssl}
 $ ./prepare_stack.sh
 $ docker stack deploy -c docker-swarm.yml ke2
 ```
@@ -377,7 +377,8 @@ SHARED_DIR には、共有ファイルシステム上の共有ディレクトリ
 ```
 - ${SHARED_DIR}/
     - log/
-    - home/    
+    - var/
+    - ssl/
 ```
 
 ### システムの停止
