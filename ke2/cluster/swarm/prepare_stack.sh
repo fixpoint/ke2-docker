@@ -3,7 +3,7 @@
 set -eu
 : ${LOGGING_MODE:=single}
 : ${KOMPIRA_LOG_DIR:=$SHARED_DIR/log}
-: ${KOMPIRA_VAR_DIR:=$SHARED_DIR/home}
+: ${KOMPIRA_VAR_DIR:=$SHARED_DIR/var}
 : ${KOMPIRA_SSL_DIR:=$SHARED_DIR/ssl}
 : ${DATABASE_URL:=""}
 : ${DATABASE_HOST:="host.docker.internal"}
