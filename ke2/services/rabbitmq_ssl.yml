@@ -4,7 +4,7 @@ services:
     hostname: rabbitmq-server
     volumes:
       - /var/lib/rabbitmq
-      - ${KOMPIRA_SSL_DIR:-../../ssl}:/run/.kompira_ssl
+      - ${KOMPIRA_SSL_DIR:-../../ssl}:/run/.kompira_ssl:ro
     configs:
       - source: rabbitmq-config-auth
         target: /etc/rabbitmq/conf.d/20-auth.conf

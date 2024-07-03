@@ -11,7 +11,7 @@ services:
         target: /etc/nginx/conf.d/ssl.conf
     volumes:
       - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
-      - ${KOMPIRA_SSL_DIR:-../../ssl}:/etc/nginx/ssl
+      - ${KOMPIRA_SSL_DIR:-../../ssl}:/etc/nginx/ssl:ro
     ports:
       - "80:80"
       - "443:443"
