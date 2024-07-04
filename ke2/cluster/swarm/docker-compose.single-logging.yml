@@ -19,9 +19,11 @@ x-multi-replicated:
 
 services:
   fluentd:
+    hostname: "fl.{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *single-replicated
   redis:
+    hostname: "re.{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *single-replicated
   rabbitmq:

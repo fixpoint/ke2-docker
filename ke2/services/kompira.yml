@@ -18,14 +18,14 @@ x-kompira-common:
 services:
   kengine:
     <<: *kompira-common
-    hostname: kengine
+    hostname: ke.${HOSTNAME}
     command: ["kompirad"]
     ulimits:
       nproc: 65535
       nofile: 65535
   kompira:
     <<: *kompira-common
-    hostname: kompira
+    hostname: ap.${HOSTNAME}
     command: ["uwsgi"]
     stop_signal: SIGINT
 configs:

@@ -20,10 +20,11 @@ x-multi-replicated:
 
 services:
   fluentd:
-    hostname: "fluentd-{{.Task.Slot}}"
+    hostname: "fl.{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *multi-replicated
   redis:
+    hostname: "re.{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *single-replicated
   rabbitmq:

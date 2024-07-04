@@ -1,7 +1,7 @@
 services:
   fluentd:
     image: kompira.azurecr.io/fluentd-with-rewrite-plugin:latest
-    hostname: fluentd
+    hostname: fl.${HOSTNAME}
     volumes:
       - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
     configs:
