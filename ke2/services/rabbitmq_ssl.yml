@@ -11,6 +11,7 @@ services:
       - source: rabbitmq-config-ssl
         target: /etc/rabbitmq/conf.d/30-ssl.conf
     environment:
+      RABBITMQ_USE_LONGNAME: true
       RABBITMQ_DATA_DIR: /var/lib/rabbitmq
       TZ: ${TZ:-Asia/Tokyo}
     command:

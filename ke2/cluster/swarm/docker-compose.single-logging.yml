@@ -27,7 +27,7 @@ services:
     logging: *default-logging
     deploy: *single-replicated
   rabbitmq:
-    hostname: "rabbitmq-{{.Task.Slot}}"
+    hostname: "mq.{{.Node.Hostname}}"
     logging: *default-logging
     configs:
       - source: rabbitmq-config
@@ -54,4 +54,4 @@ services:
 
 configs:
   rabbitmq-config:
-    file: ../../../configs/rabbitmq-cluster.conf
+    file: ./rabbitmq-cluster.conf
