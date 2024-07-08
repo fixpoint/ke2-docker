@@ -21,8 +21,10 @@ BASE_DIR=$(dirname $(dirname $(readlink -f $0)))
 
 # SSL 証明書パラメータ
 : ${CERT_NAME:="server"}
-: ${CERT_SUBJECT:="/CN=$(hostname)"}
-: ${CERT_SAN:="subjectAltName = DNS:$(hostname), DNS:$(hostname -s)"}
+: ${CERT_CN:="$(hostname)"}
+: ${CERT_SAN_ALTNAMES:="DNS:${CERT_CN}"}
+: ${CERT_SUBJECT:="/CN=${CERT_CN}"}
+: ${CERT_SAN:="subjectAltName = ${CERT_SAN_ALTNAMES}"}
 : ${CERT_DAYS:=3650}
 : ${CERT_KEYTYPE:="rsa:2048"}
 
