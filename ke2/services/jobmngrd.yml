@@ -2,6 +2,7 @@ services:
   jobmngrd:
     image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-latest}
     hostname: jm-${HOSTNAME}
+    init: true
     environment:
       - TZ=${TZ:-Asia/Tokyo}
     configs:

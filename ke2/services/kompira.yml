@@ -19,6 +19,7 @@ services:
   kengine:
     <<: *kompira-common
     hostname: ke-${HOSTNAME}
+    init: true
     command: ["kompirad"]
     ulimits:
       nproc: 65535
@@ -26,6 +27,7 @@ services:
   kompira:
     <<: *kompira-common
     hostname: ap-${HOSTNAME}
+    init: true
     command: ["uwsgi"]
     stop_signal: SIGINT
 configs:
