@@ -1,4 +1,4 @@
-# Kompira Enterprise: シンプルで軽量な次世代運用自動化プラットフォーム
+# Kompira Enterprise 2.0: クラスタ Swarm 構成
 
 このディレクトリには Docker Swarm クラスタ上に複数のエンジンコンテナを
 デプロイするための、Docker Compose ファイルが含まれています。
@@ -350,41 +350,65 @@ ke2-server2 と ke2-server3 の PostgreSQL がスタンバイとして起動し�
 (3 行)
 ```
 
-## Kompira Enterpise システムのデプロイ
+## Kompira Enterpise の開始
 
-```
-VIP: <Pgpool-II の仮想IPアドレス>
-SHARED_DIR: <共有ディレクトリのパス>
-DATABASE_URL: <データベースのURL>
-```
+クラスタ構成の Kompira Enterpise の開始する前にデプロイの準備を行ないます。
 
-Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコマンドを実行して Kompira Enterprise 開始します。
+以降の説明はこのディレクトリで作業することを前提としていますので、このディレクトリに移動してください。
 
-```
-$ export VIP=10.20.0.100
-$ export SHARED_DIR=/mnt/gluster
-$ export DATABASE_URL="pgsql://kompira:kompira@$VIP:9999/kompira"
-$ mkdir -p $SHARED_DIR/{log,var,ssl}
-$ ./prepare_stack.sh
-$ docker stack deploy -c docker-swarm.yml ke2
-```
+    $ cd ke2/cluster/swarm
 
-先頭3行で設定している環境変数については、準備した環境に合わせて書き換えてください。
+まず、コンテナイメージの取得と SSL 証明書の生成を行なうために、以下のコマンドを実行します。
 
-SHARED_DIR には、共有ファイルシステム上の共有ディレクトリを指定します。
-あらかじ、共有ディレクトリには以下のファイルやディレクトリを作成しておく必要があります。
+    $ docker compose pull
+    $ ../../../scripts/create-cert.sh
 
-```
-- ${SHARED_DIR}/
-    - log/
-    - var/
-    - ssl/
-```
+次に、共有ディレクトリ (SHARED_DIR) にはあらかじめ以下のディレクトリを作成しておく必要があります。
 
-### システムの停止
+	- ${SHARED_DIR}/
+		- log/
+		- var/
+		- ssl/
+
+SHARED_DIR を `/mnt/gluster` とする場合は、例えば以下のようにディレクトリを作成してください。
+
+	$ mkdir -p /mnt/gluster/{log,var,ssl}
+
+次に、Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコマンドを実行してください。
+このとき少なくとも環境変数 SHARED_DIR で共有ディレクトリを指定してください。
+
+	$ SHARED_DIR=/mnt/gluster ./prepare_stack.sh
+
+エラーが無ければ docker-swarm.yml というファイルが作成されているはずです。
+これでシステムを開始する準備ができました。以下のコマンドを実行して Kompira Enterprise 開始をします。
+
+	$ docker stack deploy -c docker-swarm.yml ke2
 
 Kompira Enterprise を停止するには以下のコマンドを実行します。
 
-```
-$ docker stack rm ke2
-```
+	$ docker stack rm ke2
+
+## カスタマイズ
+### 環境変数によるカスタマイズ
+
+prepare_stack.sh を実行するときに環境変数を指定することで、簡易的なカスタマイズを行なうことができます。
+
+    $ 環境変数=値... ./prepare_stack.sh
+
+| 環境変数           | 備考                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| `SHARED_DIR`       | 共有ディレクトリ（各ノードからアクセスできる必要があります）                                |
+| `DATABASE_URL`     | 外部データベース                                                                            |
+| `KOMPIRA_LOG_DIR`  | ログファイルの出力先ディレクトリ（未指定の場合は ${SHARED_DIR}/log に出力されます）         |
+
+カスタマイズ例: 
+
+    $ DATABASE_URL="pgsql://kompira:kompira@10.20.0.100:9999/kompira" ./prepare_stack.sh
+
+### 詳細なカスタマイズ
+
+コンテナ構成などを詳細にカスタマイズしたい場合は、prepare_stack.sh スクリプトで生成された docker-swarm.yml ファイルを、目的に合わせてカスタマイズしてください。
+
+## システムの管理
+
+より詳しいシステムの管理手順などについては、「KE 2.0 管理マニュアル」を参照してください。
