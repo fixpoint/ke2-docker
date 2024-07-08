@@ -51,16 +51,16 @@ if [ -z "$rabbitmq_hostname_format" ]; then
 fi
 # rabbitmq-cluster.conf を準備する
 (
-    index=0
+    node_index=0
     cat ../../../configs/rabbitmq-cluster.conf
-    for hostname in $(docker node ls --format '{{.Hostname}}'); do
-        index=$((index+1))
-        # MEMO: hostname を services.rabbitmq.hostname の形式に合わせる
+    for node_hostname in $(docker node ls --format '{{.Hostname}}'); do
+        node_index=$((node_index+1))
+        # MEMO: node_hostname を services.rabbitmq.hostname の形式に合わせる
         # MEMO: {{.Node.Hostname}} と {{.Task.Slot}} の置換にのみ対応
-        rabbitmq_hostname=$(echo ${rabbitmq_hostname_format} | sed -e "s/{{.Node.Hostname}}/$hostname/" -e "s/{{.Task.Slot}}/$index/")
-        echo "cluster_formation.classic_config.nodes.$index = rabbit@$rabbitmq_hostname"
+        rabbitmq_hostname=$(echo ${rabbitmq_hostname_format} | sed -e "s/{{.Node.Hostname}}/$node_hostname/" -e "s/{{.Task.Slot}}/$node_index/")
+        echo "cluster_formation.classic_config.nodes.$node_index = rabbit@$rabbitmq_hostname"
     done
-    if [ $index == 0 ]; then
+    if [ $node_index == 0 ]; then
         echo "ERROR: Swarm node list could not be retrieved." > /dev/stderr
         exit 1
     fi
