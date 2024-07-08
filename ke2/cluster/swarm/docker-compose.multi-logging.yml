@@ -20,15 +20,15 @@ x-multi-replicated:
 
 services:
   fluentd:
-    hostname: "fl.{{.Node.Hostname}}"
+    hostname: "fl-{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *multi-replicated
   redis:
-    hostname: "re.{{.Node.Hostname}}"
+    hostname: "re-{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *single-replicated
   rabbitmq:
-    hostname: "mq.{{.Node.Hostname}}"
+    hostname: "mq-{{.Node.Hostname}}"
     logging: *default-logging
     configs:
       - source: rabbitmq-config
@@ -37,19 +37,19 @@ services:
       RABBITMQ_ERLANG_COOKIE: SECRET_COOKIE
     deploy: *multi-replicated
   jobmngrd:
-    hostname: "jm.{{.Node.Hostname}}"
+    hostname: "jm-{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *multi-replicated
   kengine:
-    hostname: "ke.{{.Node.Hostname}}"
+    hostname: "ke-{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *multi-replicated
   kompira:
-    hostname: "ap.{{.Node.Hostname}}"
+    hostname: "ap-{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *multi-replicated
   nginx:
-    hostname: "nx.{{.Node.Hostname}}"
+    hostname: "nx-{{.Node.Hostname}}"
     logging: *default-logging
     deploy: *multi-replicated
 
