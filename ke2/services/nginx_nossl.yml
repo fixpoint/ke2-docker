@@ -1,7 +1,7 @@
 services:
   nginx:
     image: registry.hub.docker.com/library/nginx:1.25-alpine
-    hostname: nx.${HOSTNAME}
+    hostname: nx-${HOSTNAME}
     environment:
       - TZ=${TZ:-Asia/Tokyo}
     configs:

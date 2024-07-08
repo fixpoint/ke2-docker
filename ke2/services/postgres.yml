@@ -1,7 +1,7 @@
 services:
   postgres:
     image: registry.hub.docker.com/library/postgres:15-alpine
-    hostname: db.${HOSTNAME}
+    hostname: db-${HOSTNAME}
     volumes:
       - kompira_db:/var/lib/postgresql/data
     environment:
