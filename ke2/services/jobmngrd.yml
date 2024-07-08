@@ -4,12 +4,15 @@ services:
     hostname: jm-${HOSTNAME}
     init: true
     environment:
+      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
       - TZ=${TZ:-Asia/Tokyo}
     configs:
       - source: kompira-config
         target: /opt/kompira/kompira.conf
     volumes:
       - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
+    extra_hosts:
+      - host.docker.internal:host-gateway
     command: ["jobmngrd"]
     ulimits:
       nproc: 65535
