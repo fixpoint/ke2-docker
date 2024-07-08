@@ -159,15 +159,21 @@ if ${IS_PRIMARY_MODE}; then
     patch -N ${PGDATA}/postgresql.conf <<'EOF'
 --- postgresql.conf	2024-06-05 09:40:50.969136122 +0900
 +++ /var/lib/pgsql/16/data/postgresql.conf	2024-06-05 09:43:12.789063174 +0900
-@@ -57,7 +57,7 @@
+@@ -57,12 +57,12 @@
  
  # - Connection Settings -
  
 -#listen_addresses = 'localhost'		# what IP address(es) to listen on;
 +listen_addresses = '*'			# what IP address(es) to listen on;
- 					# comma-separated list of addresses;
- 					# defaults to 'localhost'; use '*' for all
- 					# (change requires restart)
+					# comma-separated list of addresses;
+					# defaults to 'localhost'; use '*' for all
+					# (change requires restart)
+ #port = 5432				# (change requires restart)
+-max_connections = 100			# (change requires restart)
++max_connections = 256			# (change requires restart)
+ #reserved_connections = 0		# (change requires restart)
+ #superuser_reserved_connections = 3	# (change requires restart)
+ #unix_socket_directories = '/run/postgresql' # comma-separated list of directories
 @@ -208,7 +208,7 @@
  
  # - Settings -
@@ -360,6 +366,15 @@ patch -N ${PGPOOL_CONF_FILE} <<EOF
                                     # Use pool_hba.conf for client authentication
  #pool_passwd = 'pool_passwd'
                                     # File name of pool_passwd for md5 authentication.
+@@ -193,7 +193,7 @@
+                                    #
+                                    # (Only applicable for dynamic process management mode)
+
+-#num_init_children = 32
++num_init_children = 64
+                                    # Maximum Number of concurrent sessions allowed
+                                    # (change requires restart)
+ #min_spare_children = 5
 @@ -332,7 +332,7 @@
                                          # Automatic rotation of logfiles will
                                          # happen after that (minutes)time.
@@ -369,6 +384,15 @@ patch -N ${PGPOOL_CONF_FILE} <<EOF
                                          # Automatic rotation of logfiles will
                                          # happen after that much (KB) log output.
                                          # 0 disables size based rotation.
+@@ -408,7 +408,7 @@
+ # LOAD BALANCING MODE
+ #------------------------------------------------------------------------------
+
+-#load_balance_mode = on
++load_balance_mode = off
+                                    # Activate load balancing mode
+                                    # (change requires restart)
+ #ignore_leading_white_space = on
 @@ -503,7 +503,7 @@
  #sr_check_period = 10
                                     # Streaming replication check period
