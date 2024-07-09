@@ -244,7 +244,7 @@ Rocky Linux 9、AlmaLinux 9など互換 OS を含む) のサーバを対象と�
 を転送します。
 
   - setup_pgpool.sh
-  - post_setup.sh
+  - setup_pgssh.sh
 
 (2) 各ホストで setup_pgpool.sh を実行する
 
@@ -267,19 +267,19 @@ CLUSTER_HOSTS の最初のホストがプライマリサーバとして、残り
 
 一般ユーザで実行する場合、起動後に sudo のパスワードを入力を求められます。
 
-(3) 各ホストで post_setup.sh を実行する
+(3) 各ホストで setup_pgssh.sh を実行する
 
-各ホストで post_setup.sh スクリプトを実行します。このスクリプトでは、
+各ホストで setup_pgssh.sh スクリプトを実行します。このスクリプトでは、
 postgres ユーザーの SSH 鍵ファイルを作成し、公開鍵ファイルを各ホストの
 ./.ssh/authorized_keys に追加して、パスワード無しでログインできるよう
-にします。post_setup.sh 起動時に CLUSTER_HOSTS 環境変数を指定する必要が
+にします。setup_pgssh.sh 起動時に CLUSTER_HOSTS 環境変数を指定する必要が
 あります。
 
 以下に実行例を示します。(CLUSTER_HOSTS の順番によって、ノードIDを割り
 当てているため、各ホストで同一になるように注意してください)
 
 ```
-[全ホスト]$ CLUSTER_HOSTS='ke2-server1 ke2-server2 ke2-server3' ./post_setup.sh
+[全ホスト]$ CLUSTER_HOSTS='ke2-server1 ke2-server2 ke2-server3' ./setup_pgssh.sh
 ```
 
 一般ユーザで実行する場合、起動後に sudo のパスワードを入力、および、実
