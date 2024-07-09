@@ -377,7 +377,7 @@ SHARED_DIR を `/mnt/gluster` とする場合は、例えば以下のように�
 次に、Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコマンドを実行してください。
 このとき少なくとも環境変数 SHARED_DIR で共有ディレクトリを指定してください。
 
-	$ SHARED_DIR=/mnt/gluster ./prepare_stack.sh
+	$ SHARED_DIR=/mnt/gluster ./setup_stack.sh
 
 エラーが無ければ docker-swarm.yml というファイルが作成されているはずです。
 これでシステムを開始する準備ができました。以下のコマンドを実行して Kompira Enterprise 開始をします。
@@ -391,9 +391,9 @@ Kompira Enterprise を停止するには以下のコマンドを実行します�
 ## カスタマイズ
 ### 環境変数によるカスタマイズ
 
-prepare_stack.sh を実行するときに環境変数を指定することで、簡易的なカスタマイズを行なうことができます。
+setup_stack.sh を実行するときに環境変数を指定することで、簡易的なカスタマイズを行なうことができます。
 
-    $ 環境変数=値... ./prepare_stack.sh
+    $ 環境変数=値... ./setup_stack.sh
 
 | 環境変数           | 備考                                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------------- |
@@ -403,11 +403,11 @@ prepare_stack.sh を実行するときに環境変数を指定することで、
 
 カスタマイズ例: 
 
-    $ DATABASE_URL="pgsql://kompira:kompira@10.20.0.100:9999/kompira" ./prepare_stack.sh
+    $ DATABASE_URL="pgsql://kompira:kompira@10.20.0.100:9999/kompira" ./setup_stack.sh
 
 ### 詳細なカスタマイズ
 
-コンテナ構成などを詳細にカスタマイズしたい場合は、prepare_stack.sh スクリプトで生成された docker-swarm.yml ファイルを、目的に合わせてカスタマイズしてください。
+コンテナ構成などを詳細にカスタマイズしたい場合は、setup_stack.sh スクリプトで生成された docker-swarm.yml ファイルを、目的に合わせてカスタマイズしてください。
 
 ## システムの管理
 
