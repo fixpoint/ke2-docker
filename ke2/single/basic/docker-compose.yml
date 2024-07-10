@@ -4,7 +4,7 @@ include:
   - ../../services/fluentd.yml
   - ../../services/redis.yml
   - ../../services/postgres.yml
-  - ../../services/rabbitmq_${SSL_MODE:-}ssl.yml
+  - ../../services/rabbitmq.yml
   - ../../services/jobmngrd.yml
   - ../../services/kompira.yml
-  - ../../services/nginx_${SSL_MODE:-}ssl.yml
+  - ../../services/nginx.yml
