@@ -30,8 +30,8 @@ services:
     hostname: "mq-{{.Node.Hostname}}"
     logging: *default-logging
     configs:
-      - source: rabbitmq-config
-        target: /etc/rabbitmq/rabbitmq.conf
+      - source: rabbitmq-config-cluster
+        target: /etc/rabbitmq/conf.d/50-cluster.conf
     environment:
       RABBITMQ_ERLANG_COOKIE: SECRET_COOKIE
     deploy: *multi-replicated
@@ -53,5 +53,5 @@ services:
     deploy: *multi-replicated
 
 configs:
-  rabbitmq-config:
+  rabbitmq-config-cluster:
     file: ./rabbitmq-cluster.conf
