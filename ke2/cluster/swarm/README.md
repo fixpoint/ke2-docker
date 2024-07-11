@@ -1,4 +1,4 @@
-# Kompira Enterprise: シンプルで軽量な次世代運用自動化プラットフォーム
+# Kompira Enterprise 2.0: クラスタ Swarm 構成
 
 このディレクトリには Docker Swarm クラスタ上に複数のエンジンコンテナを
 デプロイするための、Docker Compose ファイルが含まれています。
@@ -244,7 +244,7 @@ Rocky Linux 9、AlmaLinux 9など互換 OS を含む) のサーバを対象と�
 を転送します。
 
   - setup_pgpool.sh
-  - post_setup.sh
+  - setup_pgssh.sh
 
 (2) 各ホストで setup_pgpool.sh を実行する
 
@@ -267,19 +267,19 @@ CLUSTER_HOSTS の最初のホストがプライマリサーバとして、残り
 
 一般ユーザで実行する場合、起動後に sudo のパスワードを入力を求められます。
 
-(3) 各ホストで post_setup.sh を実行する
+(3) 各ホストで setup_pgssh.sh を実行する
 
-各ホストで post_setup.sh スクリプトを実行します。このスクリプトでは、
+各ホストで setup_pgssh.sh スクリプトを実行します。このスクリプトでは、
 postgres ユーザーの SSH 鍵ファイルを作成し、公開鍵ファイルを各ホストの
 ./.ssh/authorized_keys に追加して、パスワード無しでログインできるよう
-にします。post_setup.sh 起動時に CLUSTER_HOSTS 環境変数を指定する必要が
+にします。setup_pgssh.sh 起動時に CLUSTER_HOSTS 環境変数を指定する必要が
 あります。
 
 以下に実行例を示します。(CLUSTER_HOSTS の順番によって、ノードIDを割り
 当てているため、各ホストで同一になるように注意してください)
 
 ```
-[全ホスト]$ CLUSTER_HOSTS='ke2-server1 ke2-server2 ke2-server3' ./post_setup.sh
+[全ホスト]$ CLUSTER_HOSTS='ke2-server1 ke2-server2 ke2-server3' ./setup_pgssh.sh
 ```
 
 一般ユーザで実行する場合、起動後に sudo のパスワードを入力、および、実
@@ -350,29 +350,65 @@ ke2-server2 と ke2-server3 の PostgreSQL がスタンバイとして起動し�
 (3 行)
 ```
 
-## Kompira Enterpise システムのデプロイ
+## Kompira Enterpise の開始
 
-Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコ
-マンドを実行して Kompira Enterprise 開始します。
+クラスタ構成の Kompira Enterpise の開始する前にデプロイの準備を行ないます。
 
-```
-[いずれかのサーバ]$ export LOCAL_UID=$UID LOCAL_GID=$(id -g)
-[いずれかのサーバ]$ SHARED_DIR=<共有ディレクトリのパス> VIP=<Pgpool-II の仮想IPアドレス> docker stack deploy -c docker-compose.yml ke2me
-```
+以降の説明はこのディレクトリで作業することを前提としていますので、このディレクトリに移動してください。
 
-SHARED_DIR には、共有ファイルシステム上の共有ディレクトリを指定します。
-あらかじ、共有ディレクトリには以下のファイルやディレクトリを作成しておく必要があります。
+    $ cd ke2/cluster/swarm
 
-```
-- ${SHARED_DIR}/
-    - log/
-    - home/    
-```
+まず、コンテナイメージの取得と SSL 証明書の生成を行なうために、以下のコマンドを実行します。
 
-### システムの停止
+    $ docker compose pull
+    $ ../../../scripts/create-cert.sh
+
+次に、共有ディレクトリ (SHARED_DIR) にはあらかじめ以下のディレクトリを作成しておく必要があります。
+
+	- ${SHARED_DIR}/
+		- log/
+		- var/
+		- ssl/
+
+SHARED_DIR を `/mnt/gluster` とする場合は、例えば以下のようにディレクトリを作成してください。
+
+	$ mkdir -p /mnt/gluster/{log,var,ssl}
+
+次に、Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコマンドを実行してください。
+このとき少なくとも環境変数 SHARED_DIR で共有ディレクトリを指定してください。
+
+	$ SHARED_DIR=/mnt/gluster ./setup_stack.sh
+
+エラーが無ければ docker-swarm.yml というファイルが作成されているはずです。
+これでシステムを開始する準備ができました。以下のコマンドを実行して Kompira Enterprise 開始をします。
+
+	$ docker stack deploy -c docker-swarm.yml ke2
 
 Kompira Enterprise を停止するには以下のコマンドを実行します。
 
-```
-$ docker stack rm ke2me
-```
+	$ docker stack rm ke2
+
+## カスタマイズ
+### 環境変数によるカスタマイズ
+
+setup_stack.sh を実行するときに環境変数を指定することで、簡易的なカスタマイズを行なうことができます。
+
+    $ 環境変数=値... ./setup_stack.sh
+
+| 環境変数           | 備考                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| `SHARED_DIR`       | 共有ディレクトリ（各ノードからアクセスできる必要があります）                                |
+| `DATABASE_URL`     | 外部データベース                                                                            |
+| `KOMPIRA_LOG_DIR`  | ログファイルの出力先ディレクトリ（未指定の場合は ${SHARED_DIR}/log に出力されます）         |
+
+カスタマイズ例: 
+
+    $ DATABASE_URL="pgsql://kompira:kompira@10.20.0.100:9999/kompira" ./setup_stack.sh
+
+### 詳細なカスタマイズ
+
+コンテナ構成などを詳細にカスタマイズしたい場合は、setup_stack.sh スクリプトで生成された docker-swarm.yml ファイルを、目的に合わせてカスタマイズしてください。
+
+## システムの管理
+
+より詳しいシステムの管理手順などについては、「KE 2.0 管理マニュアル」を参照してください。

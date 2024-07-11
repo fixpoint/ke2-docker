@@ -1,0 +1,20 @@
+services:
+  fluentd:
+    image: kompira.azurecr.io/fluentd-with-rewrite-plugin:latest
+    hostname: fl-${HOSTNAME}
+    volumes:
+      - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
+    configs:
+      - source: fluentd-config
+        target: /fluentd/etc/fluent.conf
+    environment:
+      TZ: ${TZ:-Asia/Tokyo}
+    user: "${LOGGING_UID:-0}:${LOGGING_GID:-0}"
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+configs:
+  fluentd-config:
+    file: ../../configs/fluentd.conf
+volumes:
+  kompira_log:
