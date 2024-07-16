@@ -2,11 +2,11 @@ services:
   postgres:
     image: registry.hub.docker.com/library/postgres:15-alpine
     hostname: db-${HOSTNAME}
-    volumes:
-      - kompira_db:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: kompira
       POSTGRES_USER: kompira
       TZ: ${TZ:-Asia/Tokyo}
+    volumes:
+      - ${PGDATA:-kompira_db}:/var/lib/postgresql/data
 volumes:
   kompira_db:
