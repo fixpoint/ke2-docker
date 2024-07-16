@@ -1,17 +1,12 @@
 #! /bin/sh
 
 set -eu
-: ${LOGGING_MODE:=single}
 : ${KOMPIRA_LOG_DIR:=$SHARED_DIR/log}
 : ${KOMPIRA_VAR_DIR:=$SHARED_DIR/var}
 : ${KOMPIRA_SSL_DIR:=$SHARED_DIR/ssl}
 : ${DATABASE_URL:=""}
 : ${DATABASE_HOST:="host.docker.internal"}
 
-if [ ! -f "docker-compose.$LOGGING_MODE-logging.yml" ]; then
-    echo "ERROR: Invalid LOGGING_MODE ($LOGGING_MODE)" > /dev/stderr
-    exit 1
-fi
 if [ ! -w "$KOMPIRA_LOG_DIR" ]; then
     echo "ERROR: KOMPIRA_LOG_DIR ($KOMPIRA_LOG_DIR) is not writable" > /dev/stderr
     exit 1
@@ -40,7 +35,7 @@ echo "OK: SSL files have been copied to the shared directory"
 # MEMO: docker compose config の結果はそのままでは docker stack が扱えない場合がある
 # 一部の項目について正規化することで docker stack でも扱えるようにする
 export KOMPIRA_LOG_DIR KOMPIRA_VAR_DIR KOMPIRA_SSL_DIR DATABASE_URL
-docker compose -f docker-compose.yml -f docker-compose.$LOGGING_MODE-logging.yml config | sed -r -e '/^name:/d' -e 's/"([0-9]+)"/\1/' > docker-swarm.yml
+docker compose config | sed -r -e '/^name:/d' -e 's/"([0-9]+)"/\1/' -e 's/<<(.*)>>/{{\1}}/' > docker-swarm.yml
 echo "OK: docker-swarm.yml prepared"
 
 # services.rabbitmq.hostname のフォーマットを取得する

@@ -33,19 +33,19 @@ services:
   jobmngrd:
     hostname: "jm-{{.Node.Hostname}}"
     environment:
-      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-{{.Node.Hostname}}:5672}
+      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
     logging: *default-logging
     deploy: *multi-replicated
   kengine:
     hostname: "ke-{{.Node.Hostname}}"
     environment:
-      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-{{.Node.Hostname}}:5672}
+      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
     logging: *default-logging
     deploy: *multi-replicated
   kompira:
     hostname: "ap-{{.Node.Hostname}}"
     environment:
-      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-{{.Node.Hostname}}:5672}
+      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
     logging: *default-logging
     deploy: *multi-replicated
   nginx:
