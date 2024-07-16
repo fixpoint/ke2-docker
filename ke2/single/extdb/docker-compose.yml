@@ -1,7 +1,6 @@
 # シングル外部DB構成
 name: ke2
 include:
-  - ../../services/fluentd.yml
   - ../../services/redis.yml
   - ../../services/rabbitmq.yml
   - ../../services/jobmngrd.yml

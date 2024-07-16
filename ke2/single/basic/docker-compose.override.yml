@@ -1,39 +1,27 @@
 x-logging:
   &default-logging
-  driver: fluentd
-  options:
-    fluentd-async-connect: "true"
-    tag: "docker.{{.Name}}"
+  driver: local
+  # options:
+  #   tag: "docker.{{.Name}}"
 
 services:
-  fluentd:
-    logging: *default-logging
-    restart: always
   redis:
     logging: *default-logging
-    depends_on:
-      - fluentd
     restart: always
   postgres:
     logging: *default-logging
-    depends_on:
-      - fluentd
     restart: always
   rabbitmq:
     logging: *default-logging
-    depends_on:
-      - fluentd
     restart: always
   jobmngrd:
     logging: *default-logging
     depends_on:
-      - fluentd
       - rabbitmq
     restart: always
   kengine:
     logging: *default-logging
     depends_on:
-      - fluentd
       - redis
       - postgres
       - rabbitmq
@@ -41,7 +29,6 @@ services:
   kompira:
     logging: *default-logging
     depends_on:
-      - fluentd
       - redis
       - postgres
       - kengine
@@ -49,6 +36,5 @@ services:
   nginx:
     logging: *default-logging
     depends_on:
-      - fluentd
       - kompira
     restart: always

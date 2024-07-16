@@ -1,6 +1,5 @@
 # クラスタ Swarm 構成
 include:
-  - ../../services/fluentd.yml
   - ../../services/redis.yml
   - ../../services/rabbitmq.yml
   - ../../services/jobmngrd.yml

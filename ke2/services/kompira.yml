@@ -12,6 +12,7 @@ x-kompira-common:
       target: /opt/kompira/kompira_audit.yaml
   volumes:
     - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
+    - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
   extra_hosts:
     - host.docker.internal:host-gateway
 
@@ -35,3 +36,4 @@ configs:
     file: ../../configs/kompira_audit.yaml
 volumes:
   kompira_var:
+  kompira_log:

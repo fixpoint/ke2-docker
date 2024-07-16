@@ -1,9 +1,8 @@
 x-logging:
   &default-logging
-  driver: fluentd
-  options:
-    fluentd-async-connect: "true"
-    tag: "docker.{{.Name}}"
+  driver: local
+  # options:
+  #   tag: "docker.{{.Name}}"
 
 x-single-replicated:
   &single-replicated
@@ -18,10 +17,6 @@ x-multi-replicated:
     max_replicas_per_node: 1
 
 services:
-  fluentd:
-    hostname: "fl-{{.Node.Hostname}}"
-    logging: *default-logging
-    deploy: *single-replicated
   redis:
     hostname: "re-{{.Node.Hostname}}"
     logging: *default-logging
