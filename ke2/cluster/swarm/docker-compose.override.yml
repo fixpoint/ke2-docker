@@ -28,7 +28,7 @@ services:
       - source: rabbitmq-config-cluster
         target: /etc/rabbitmq/conf.d/50-cluster.conf
     environment:
-      RABBITMQ_ERLANG_COOKIE: SECRET_COOKIE
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-SECRET_COOKIE}
     deploy: *multi-replicated
   jobmngrd:
     hostname: "jm-{{.Node.Hostname}}"
