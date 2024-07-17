@@ -34,6 +34,9 @@ BASE_DIR=$(dirname $(dirname $(readlink -f $0)))
 : ${SOURCE:=$BASE_DIR/ssl}
 : ${TARGET:=/kompira-ssl}
 
+# docker run コマンド
+DOCKER_RUN="docker run --rm --name create-cert -u $LOCAL_UID:$LOCAL_GID"
+
 # openssl コマンドを実行できるコンテナイメージ (rabbitmq) の確認
 : ${IMAGE:=$(docker images --format="{{.ID}}:{{.Repository}}" | grep -w rabbitmq | head -1 | cut -d: -f1)}
 if [ -z "$IMAGE" ]; then
@@ -47,7 +50,7 @@ if [ -z "$IMAGE" ]; then
     fi
 fi
 # openssl コマンドの存在確認
-OPENSSL_VERSION=$(docker run -u $LOCAL_UID:$LOCAL_GID $IMAGE openssl version 2>/dev/null || true)
+OPENSSL_VERSION=$($DOCKER_RUN $IMAGE openssl version 2>/dev/null || true)
 if [ -z "$OPENSSL_VERSION" ]; then
     echo "ERROR: openssl not found in docker image '$IMAGE'"
     exit 1
@@ -59,14 +62,14 @@ fi
 # CA 証明書の作成
 if [ ! -f $SOURCE/$CA_NAME.crt ]; then
     echo "Create local CA certificate: $SOURCE/$CA_NAME.crt"
-    docker run -u $LOCAL_UID:$LOCAL_GID -v $SOURCE:$TARGET $IMAGE openssl req -x509 -noenc -newkey $CA_KEYTYPE -days $CA_DAYS -out $TARGET/$CA_NAME.crt -keyout $TARGET/$CA_NAME.key -subj "$CA_SUBJECT"
+    $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl req -x509 -noenc -newkey $CA_KEYTYPE -days $CA_DAYS -out $TARGET/$CA_NAME.crt -keyout $TARGET/$CA_NAME.key -subj "$CA_SUBJECT"
 fi
 # SSL 証明書の作成
 if [ ! -f $SOURCE/$CERT_NAME.crt ]; then
     echo "Create SSL (self-signed) certificate: $SOURCE/$CERT_NAME.crt"
-    docker run -u $LOCAL_UID:$LOCAL_GID -v $SOURCE:$TARGET $IMAGE openssl req -new -newkey $CERT_KEYTYPE -noenc -sha256 -out $TARGET/$CERT_NAME.csr -keyout $TARGET/$CERT_NAME.key -subj "$CERT_SUBJECT"
+    $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl req -new -newkey $CERT_KEYTYPE -noenc -sha256 -out $TARGET/$CERT_NAME.csr -keyout $TARGET/$CERT_NAME.key -subj "$CERT_SUBJECT"
     echo "$CERT_SAN" > $SOURCE/$CERT_NAME.ext
-    docker run -u $LOCAL_UID:$LOCAL_GID -v $SOURCE:$TARGET $IMAGE openssl x509 -req -days $CERT_DAYS -in $TARGET/$CERT_NAME.csr -out $TARGET/$CERT_NAME.crt -CA $TARGET/$CA_NAME.crt -CAkey $TARGET/$CA_NAME.key -CAcreateserial -extfile $TARGET/$CERT_NAME.ext
+    $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl x509 -req -days $CERT_DAYS -in $TARGET/$CERT_NAME.csr -out $TARGET/$CERT_NAME.crt -CA $TARGET/$CA_NAME.crt -CAkey $TARGET/$CA_NAME.key -CAcreateserial -extfile $TARGET/$CERT_NAME.ext
 else
     echo "WARNING: SSL certificate $SOURCE/$CERT_NAME.crt already exists"
 fi
