@@ -6,11 +6,14 @@ services:
     environment:
       - AMQP_URL=${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
       - TZ=${TZ:-Asia/Tokyo}
+      - LOGGING_LEVEL=${JOBMNGRD_LOGGING_LEVEL:-${LOGGING_LEVEL:-INFO}}
+      - LOGGING_NAME=jobmngrd
     configs:
       - source: kompira-config
         target: /opt/kompira/kompira.conf
     volumes:
       - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
+      - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
     extra_hosts:
       - host.docker.internal:host-gateway
     command: ["jobmngrd"]
@@ -22,3 +25,4 @@ configs:
     file: ../../configs/kompira.conf
 volumes:
   kompira_var:
+  kompira_log:
