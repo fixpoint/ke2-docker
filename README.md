@@ -23,8 +23,8 @@ Kompira Enterprise は IT 運用管理業務の自動化を支援するための
 Docker エンジンと git コマンドがインストールされているサーバであれば、以下のコマンドを実行することですぐに使い始めることができます。
 
 ```
-$ git clone https://github.com/fixpoint/ke-docker.git
-$ cd ke-docker/ke2/single/basic
+$ git clone https://github.com/fixpoint/ke2-docker.git
+$ cd ke2-docker/ke2/single/basic
 $ docker compose pull
 $ ../../../scripts/create-cert.sh
 $ docker compose up -d
