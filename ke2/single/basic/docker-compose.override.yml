@@ -1,0 +1,40 @@
+x-logging:
+  &default-logging
+  driver: local
+  # options:
+  #   tag: "docker.{{.Name}}"
+
+services:
+  redis:
+    logging: *default-logging
+    restart: always
+  postgres:
+    logging: *default-logging
+    restart: always
+  rabbitmq:
+    logging: *default-logging
+    restart: always
+  jobmngrd:
+    logging: *default-logging
+    depends_on:
+      - rabbitmq
+    restart: always
+  kengine:
+    logging: *default-logging
+    depends_on:
+      - redis
+      - postgres
+      - rabbitmq
+    restart: always
+  kompira:
+    logging: *default-logging
+    depends_on:
+      - redis
+      - postgres
+      - kengine
+    restart: always
+  nginx:
+    logging: *default-logging
+    depends_on:
+      - kompira
+    restart: always

@@ -1,0 +1,6 @@
+services:
+  redis:
+    image: registry.hub.docker.com/library/redis:7.2-alpine
+    hostname: re-${HOSTNAME}
+    environment:
+      - TZ=${TZ:-Asia/Tokyo}

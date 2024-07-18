@@ -1,0 +1,49 @@
+x-kompira-common-settings:
+  &kompira-common-settings
+  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-latest}
+  configs:
+    - source: kompira-audit
+      target: /opt/kompira/kompira_audit.yaml
+  volumes:
+    - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
+    - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
+  extra_hosts:
+    - host.docker.internal:host-gateway
+
+x-kompira-common-environ:
+  &kompira-common-environ
+  DATABASE_URL: ${DATABASE_URL:-pgsql://kompira:kompira@${DATABASE_HOST:-postgres}:5432/kompira}
+  AMQP_URL: ${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+  CACHE_URL: ${CACHE_URL:-redis://redis:6379}
+  LANGUAGE_CODE: ${LANGUAGE_CODE:-ja}
+  TZ: ${TZ:-Asia/Tokyo}
+
+services:
+  kengine:
+    <<: *kompira-common-settings
+    environment:
+      <<: *kompira-common-environ
+      LOGGING_LEVEL: ${KENGINE_LOGGING_LEVEL:-${LOGGING_LEVEL:-INFO}}
+      LOGGING_NAME: kengine
+    hostname: ke-${HOSTNAME}
+    init: true
+    command: ["kompirad"]
+    ulimits:
+      nproc: 65535
+      nofile: 65535
+  kompira:
+    <<: *kompira-common-settings
+    environment:
+      <<: *kompira-common-environ
+      LOGGING_LEVEL: ${KOMPIRA_LOGGING_LEVEL:-${LOGGING_LEVEL:-INFO}}
+      LOGGING_NAME: kompira
+    hostname: ap-${HOSTNAME}
+    init: true
+    command: ["uwsgi"]
+    stop_signal: SIGINT
+configs:
+  kompira-audit:
+    file: ../../configs/kompira_audit.yaml
+volumes:
+  kompira_var:
+  kompira_log:
