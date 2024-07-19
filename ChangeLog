@@ -1,0 +1,5 @@
+2024-07-19  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* ホスト名が FQDN でないときに rabbitmq-server が正常動作しない場合が問題を修正しました。(#16)
+
+
