@@ -31,6 +31,9 @@ fi
 /bin/cp -f -a -r -T ../../../ssl $KOMPIRA_SSL_DIR
 echo "OK: SSL files have been copied to the shared directory"
 
+# ホスト名がロング形式であるかを判定して環境変数 RABBITMQ_USE_LONGNAME に反映する
+export RABBITMQ_USE_LONGNAME=$([ $(hostname) == $(hostname -s) ] && echo 'false' || echo 'true')
+
 # docker stack deploy 用の docker-swarm.yml ファイルを準備する
 # MEMO: docker compose config の結果はそのままでは docker stack が扱えない場合がある
 # 一部の項目について正規化することで docker stack でも扱えるようにする
