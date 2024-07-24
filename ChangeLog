@@ -1,5 +1,7 @@
 2024-07-25  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
+	* 監査ログ(audit.log)の記録レベル値を環境変数 AUDIT_LOGGING_LEVEL で指定できるようにしました。(#28)
+
 	* rabbitmq コンテナを 3.13-alpine にアップデートしました。 (#26)
 
 2024-07-19  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
