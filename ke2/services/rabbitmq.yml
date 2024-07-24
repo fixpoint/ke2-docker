@@ -1,6 +1,6 @@
 services:
   rabbitmq:
-    image: registry.hub.docker.com/library/rabbitmq:3.12-alpine
+    image: registry.hub.docker.com/library/rabbitmq:3.13-alpine
     hostname: mq-${HOSTNAME}
     environment:
       RABBITMQ_DATA_DIR: /var/lib/rabbitmq
