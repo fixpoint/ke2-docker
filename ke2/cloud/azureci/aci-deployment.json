@@ -1,0 +1,185 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "resources": [
+      {
+        "type": "Microsoft.ContainerInstance/containerGroups",
+        "apiVersion": "2019-12-01",
+        "name": "azureci",
+        "location": "Japan East",
+        "properties": {
+          "containers": [
+            {
+              "name": "kompira",
+              "properties": {
+                "image": "kompira.azurecr.io/kompira-enterprise:latest",
+                "resources": {
+                  "requests": {
+                    "cpu": 0.5,
+                    "memoryInGb": 1
+                  }
+                },
+                "environmentVariables": [
+                  { "name": "DATABASE_URL", "secureValue": "[parameters('databaseUrl')]" },
+                  { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
+                  { "name": "CACHE_URL", "value": "redis://localhost:6379" },
+                  { "name": "TZ", "value": "Asia/Tokyo" }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "kompira-var",
+                    "mountPath": "/var/opt/kompira"
+                  }
+                ],
+                "command": ["docker-entrypoint.sh", "uwsgi"]
+              }
+            },
+            {
+              "name": "kengine",
+              "properties": {
+                "image": "kompira.azurecr.io/kompira-enterprise:latest",
+                "resources": {
+                  "requests": {
+                    "cpu": 0.5,
+                    "memoryInGb": 1
+                  }
+                },
+                "environmentVariables": [
+                  { "name": "DATABASE_URL", "secureValue": "[parameters('databaseUrl')]" },
+                  { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
+                  { "name": "CACHE_URL", "value": "redis://localhost:6379" },
+                  { "name": "TZ", "value": "Asia/Tokyo" }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "kompira-var",
+                    "mountPath": "/var/opt/kompira"
+                  }
+                ],
+                "command": ["docker-entrypoint.sh", "kompirad"]
+              }
+            },
+            {
+              "name": "jobmngrd",
+              "properties": {
+                "image": "kompira.azurecr.io/kompira-enterprise:latest",
+                "resources": {
+                  "requests": {
+                    "cpu": 0.5,
+                    "memoryInGb": 1
+                  }
+                },
+                "environmentVariables": [
+                  { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
+                  { "name": "TZ", "value": "Asia/Tokyo" }
+                ],
+                "volumeMounts": [
+                  {
+                    "name": "kompira-var",
+                    "mountPath": "/var/opt/kompira"
+                  }
+                ],
+                "command": ["docker-entrypoint.sh", "jobmngrd"]
+              }
+            },
+            {
+              "name": "redis",
+              "properties": {
+                "image": "registry.hub.docker.com/library/redis:7.2-alpine",
+                "resources": {
+                  "requests": {
+                    "cpu": 0.5,
+                    "memoryInGb": 1
+                  }
+                }
+              }
+            },
+            {
+              "name": "rabbitmq",
+              "properties": {
+                "image": "registry.hub.docker.com/library/rabbitmq:3.12-alpine",
+                "resources": {
+                  "requests": {
+                    "cpu": 0.5,
+                    "memoryInGb": 1
+                  }
+                }
+              }
+            },
+            {
+              "name": "nginx",
+              "properties": {
+                "image": "registry.hub.docker.com/library/nginx:1.25-alpine",
+                "resources": {
+                  "requests": {
+                    "cpu": 0.5,
+                    "memoryInGb": 1
+                  }
+                },
+                "volumeMounts": [
+                  {
+                    "name": "kompira-var",
+                    "mountPath": "/var/opt/kompira"
+                  },
+                  {
+                    "name": "kompira-nginx-conf",
+                    "mountPath": "/etc/nginx/conf.d"
+                  }
+                ],
+                "ports": [
+                  {
+                    "port": 80
+                  }
+                ]
+              }
+            }
+          ],
+          "osType": "Linux",
+          "volumes": [
+            {
+              "name": "kompira-var",
+              "azureFile": {
+                "shareName": "kompira-var",
+                "storageAccountName": "[parameters('storageAccountName')]",
+                "storageAccountKey": "[parameters('storageAccountKey')]"
+              }
+            },
+            {
+              "name": "kompira-nginx-conf",
+              "azureFile": {
+                "shareName": "kompira-nginx-conf",
+                "storageAccountName": "[parameters('storageAccountName')]",
+                "storageAccountKey": "[parameters('storageAccountKey')]"
+              }
+            }
+          ],
+          "ipAddress": {
+            "type": "Public",
+            "dnsNameLabel": "keapp",
+            "ports": [
+              {
+                "protocol": "tcp",
+                "port": 80
+              }
+            ]
+          },
+          "restartPolicy": "Always"
+        },
+        "tags": {
+          "ke2-azureaci": "ke2"
+        }
+      }
+    ],
+    "parameters": {
+      "databaseUrl": {
+        "type": "string"
+      },
+      "storageAccountName": {
+        "type": "string"
+      },
+      "storageAccountKey": {
+        "type": "string"
+      }
+    }
+  }
+  
