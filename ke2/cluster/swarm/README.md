@@ -374,6 +374,15 @@ SHARED_DIR を `/mnt/gluster` とする場合は、例えば以下のように�
 
 	$ mkdir -p /mnt/gluster/{log,var,ssl}
 
+次に、データベース上でのパスワード情報などの暗号化に用いる秘密鍵をファイル `${SHARED_DIR}/var/.secret_key` に準備します。
+Kompira 用データベースを新規に構築する場合は、たとえば以下のようにして空のファイルを用意してください。
+
+    $ touch /mnt/gluster/var/.secret_key
+
+※ 外部データベースとして既に構築されている Kompira データベースを用いる場合は、そのデータベースにおける秘密鍵を `${SHARED_DIR}/var/.secret_key` に書き込んでおいてください。
+
+    $ echo -n 'xxxxxxxxxxxxxxxx' > /mnt/gluster/var/.secret_key
+
 次に、Docker Swarm クラスタを構成するいずれかのマネージャノード上で以下のコマンドを実行してください。
 このとき少なくとも環境変数 SHARED_DIR で共有ディレクトリを指定してください。
 
