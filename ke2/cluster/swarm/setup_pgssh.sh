@@ -3,6 +3,7 @@ set -eu  # 未定義変数のチェック、コマンドエラー時は処理中
 
 : ${CLUSTER_HOSTS:?Undefined environment variable. Example: export CLUSTER_HOSTS="'server1 server2 server3'"}
 : ${HOST_NAME:=$(hostname)}
+: ${SSH_OPTIONS:="-o StrictHostKeyChecking=no"}
 
 #
 # root ユーザに切り替える
@@ -37,7 +38,7 @@ su - postgres -c 'restorecon -Rv ~/.ssh'
 #
 # 自ホストの postgres ユーザーの SSH 公開鍵ファイルをクラスタ上の各ホストの authorized_keys に追加する
 #
+KEY_DATA=$(cat /var/lib/pgsql/.ssh/${SSH_KEYFILE_NAME}.pub)
 for host in ${CLUSTER_HOSTS}; do
-    KEY_DATA=$(cat /var/lib/pgsql/.ssh/${SSH_KEYFILE_NAME}.pub)
-    ssh -t ${LOGIN_USER}@${host} sudo -i -u postgres sh -c "'sed -i.bak -e /postgres@${HOST_NAME}$/d ~/.ssh/authorized_keys 2> /dev/null; (mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo ${KEY_DATA} >> ~/.ssh/authorized_keys && restorecon -Rv ~/.ssh)'"
+    ssh $SSH_OPTIONS -t ${LOGIN_USER}@${host} sudo -i -u postgres sh -c "'sed -i.bak -e /postgres@${HOST_NAME}$/d ~/.ssh/authorized_keys 2> /dev/null; (mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo ${KEY_DATA} >> ~/.ssh/authorized_keys && restorecon -Rv ~/.ssh)'"
 done
