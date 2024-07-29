@@ -1,17 +1,21 @@
 #!/bin/bash
-
 #
 # PostgreSQL/Pgpool-II クラスタ構築用のスクリプト
+# 構成:
+#  - postgresql 16 以上
+#  - pgpool 4.5 以上
 #
-# 対象OS: AlmaLinux 9
-#
+# 対象OS:
+#  - AlmaLinux 9
+#  - RockyLinux 9
 
 set -eu  # 未定義変数のチェック、コマンドエラー時は処理中断
 
 : ${CLUSTER_HOSTS:?Undefined environment variable. Example: export CLUSTER_HOSTS="'server1 server2 server3'"}
 : ${CLUSTER_VIP:?Undefined environment variable. Example: export CLUSTER_VIP=10.20.0.1}
 
-: ${IF_NAME:=$(ip -br link |grep -v LOOPBACK | grep -v DOWN | while read ifname _rem; do echo $ifname; break; done)}
+: ${IF_NAME:=$(ip -brief link show | grep -E -v '(LOOPBACK|DOWN)' | head -1 | (read ifname _rem; echo $ifname))}
+: ${IF_PREFIX:=$(ip -brief -f inet addr show dev ${IF_NAME} primary | (read ifname status addr _rem; echo ${addr#*/}))}
 : ${HOST_NAME:=$(hostname)}
 
 : ${PG_USER:=postgres}
@@ -25,6 +29,32 @@ set -eu  # 未定義変数のチェック、コマンドエラー時は処理中
 : ${PG_POOL_KEY:=ke2pgpoolkey}
 : ${PG_KOMPIRA_DB:=kompira}
 
+# postgresql のアーカイブディレクトリ
+: ${POSTGRES_ARCHIVE_DIR:=/var/lib/pgsql/archivedir}
+
+# postgresq にカスタム設定するパラメータ
+: ${POSTGRES_MAX_CONNECTIONS:=256}
+: ${POSTGRES_WAL_LEVEL:=replica}
+: ${POSTGRES_WAL_LOG_HINTS:=on}
+: ${POSTGRES_ARCHIVE_MODE:=on}
+: ${POSTGRES_MAX_WAL_SENDERS:=10}
+: ${POSTGRES_MAX_REPLICATION_SLOTS:=10}
+
+# pgpool の設定ファイルパス
+: ${PGPOOL_CONF_PATH:=/etc/pgpool-II}
+
+# pgpool にカスタム設定するパラメータ
+: ${PGPOOL_NUM_INIT_CHILDREN:=64}
+: ${PGPOOL_LOAD_BALANCE_MODE:=off}
+: ${PGPOOL_USE_WATCHDOG:=on}
+
+# hba.conf/pool_hba.conf に設定する接続許可するネットワークアドレス
+# postgresql/pgpool は同じネットワーク (samenet) に所属する前提
+# 接続元の kompira が postgres/pgpool と別ネットワークに配置される場合は
+# 環境変数 HBA_KOMPIRA_ADDRESS=10.10.0.0/16 などと指定すること
+: ${HBA_CLUSTER_ADDRESS:=samenet}
+: ${HBA_KOMPIRA_ADDRESS:=samenet}
+
 #
 # root ユーザに切り替える
 #
@@ -34,499 +64,277 @@ if [[ ${USER} != "root" ]]; then
     exit $?
 fi
 
-#
-# Pgpool-II ノードIDの設定
-#
-i=0
-for host in ${CLUSTER_HOSTS}; do
-    if [[ ${host} = ${HOST_NAME} ]]; then
-	NODE_ID=${i}
-	break
+check_node_id()
+{
+    #
+    # Pgpool-II ノードIDの設定
+    #
+    local i=0
+    for host in ${CLUSTER_HOSTS}; do
+        if [[ ${host} = ${HOST_NAME} ]]; then
+            NODE_ID=${i}
+            break
+        fi
+        : $((++i))
+    done
+    if [[ ! -v NODE_ID ]]; then
+        echo "ホスト名 ${HOST_NAME} が" '$CLUSTER_HOSTS に含まれていません'
+        exit 1
     fi
-    : $((++i))
-done
-if [[ ! -v NODE_ID ]]; then
-    echo "ホスト名 ${HOST_NAME} が" '$CLUSTER_HOSTS に含まれていません'
-    exit 1
-fi
-: ${IS_PRIMARY_MODE:=$((($NODE_ID==0))&&echo true||echo false)}  # プライマリモードでセットアップを行う場合は true をセットする
+    : ${IS_PRIMARY_MODE:=$((($NODE_ID==0))&&echo true||echo false)}  # プライマリモードでセットアップを行う場合は true をセットする
+}
 
-#
-# 必要なツール類のセットアップ
-#
-dnf update -y
-dnf install -y patch ipcalc
+install_packages_on_rhel9()
+{
+    # PostgreSQL / Pgpool-II のインストール (RHEL9)
+    # dnf update -y
 
-: ${IF_PREFIX:=$(ipcalc -p $(echo $(ip addr show dev ${IF_NAME} | grep 'inet ') | cut -d ' ' -f 2) | cut -d '=' -f 2)}
+    # PostgreSQL コミュニティのリポジトリから PostgreSQL バージョン16 をインストールする
+    # [備考] postgresql16-contrib パッケージは、pgcrypto 拡張に必要となる
+    #
+    dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    dnf -qy module disable postgresql
+    dnf install -y postgresql16-server postgresql16-contrib
 
-#
-# PostgreSQL コミュニティのリポジトリから PostgreSQL バージョン16 をインストールする
-#
-# [備考] postgresql16-contrib パッケージは、pgcrypto 拡張に必要となる
-#
-dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-dnf -qy module disable postgresql
-dnf install -y postgresql16-server postgresql16-contrib
+    # AlmaLinux 9 にインストールする場合、libmemcached が無いと言って怒られるので、事前に各ホスト上で以下を実行しておく必要がある。
+    #
+    dnf config-manager --set-enabled crb
 
-#
-# AlmaLinux 9 にインストールする場合、libmemcached が無いと言って怒られるので、事前に各ホスト上で以下を実行しておく必要がある。
-#
-dnf config-manager --set-enabled crb
+    # Pgpool-II関連のパッケージはPostgreSQLコミュニティのリポジトリにもあるため、
+    # PostgreSQLのリポジトリパッケージがすでにインストールされている場合は、
+    # PostgreSQLコミュニティのリポジトリからPgpool-IIをインストールしないように
+    # /etc/yum.repos.d/pgdg-redhat-all.repoにexclude設定を行う。
+    #
+    dnf config-manager --setopt 'pgdg*.exclude=pgpool*' --save
 
-#
-# Pgpool-II関連のパッケージはPostgreSQLコミュニティのリポジトリにもあるため、
-# PostgreSQLのリポジトリパッケージがすでにインストールされている場合は、
-# PostgreSQLコミュニティのリポジトリからPgpool-IIをインストールしないように
-# /etc/yum.repos.d/pgdg-redhat-all.repoにexclude設定を行う。
-#
-patch -N /etc/yum.repos.d/pgdg-redhat-all.repo <<'EOF' || echo 'pgdg-redhat-all.repo のパッチ適用に失敗しました'
---- /etc/yum.repos.d/pgdg-redhat-all.repo	2024-04-10 16:00:02.000000000 +0900
-+++ pgdg-redhat-all.repo	2024-06-05 08:27:26.531561739 +0900
-@@ -8,6 +8,7 @@
- name=PostgreSQL common RPMs for RHEL / Rocky / AlmaLinux $releasever - $basearch
- baseurl=https://download.postgresql.org/pub/repos/yum/common/redhat/rhel-$releasever-$basearch
- enabled=1
-+exclude=pgpool*
- gpgcheck=1
- gpgkey=file:///etc/pki/rpm-gpg/PGDG-RPM-GPG-KEY-RHEL
- repo_gpgcheck = 1
-@@ -41,6 +42,7 @@
- name=PostgreSQL 16 for RHEL / Rocky / AlmaLinux $releasever - $basearch
- baseurl=https://download.postgresql.org/pub/repos/yum/16/redhat/rhel-$releasever-$basearch
- enabled=1
-+exclude=pgpool*
- gpgcheck=1
- gpgkey=file:///etc/pki/rpm-gpg/PGDG-RPM-GPG-KEY-RHEL
- repo_gpgcheck = 1
-@@ -49,6 +51,7 @@
- name=PostgreSQL 15 for RHEL / Rocky / AlmaLinux $releasever - $basearch
- baseurl=https://download.postgresql.org/pub/repos/yum/15/redhat/rhel-$releasever-$basearch
- enabled=1
-+exclude=pgpool*
- gpgcheck=1
- gpgkey=file:///etc/pki/rpm-gpg/PGDG-RPM-GPG-KEY-RHEL
- repo_gpgcheck = 1
-@@ -57,6 +60,7 @@
- name=PostgreSQL 14 for RHEL / Rocky / AlmaLinux $releasever - $basearch
- baseurl=https://download.postgresql.org/pub/repos/yum/14/redhat/rhel-$releasever-$basearch
- enabled=1
-+exclude=pgpool*
- gpgcheck=1
- gpgkey=file:///etc/pki/rpm-gpg/PGDG-RPM-GPG-KEY-RHEL
- repo_gpgcheck = 1
-@@ -65,6 +69,7 @@
- name=PostgreSQL 13 for RHEL / Rocky / AlmaLinux $releasever - $basearch
- baseurl=https://download.postgresql.org/pub/repos/yum/13/redhat/rhel-$releasever-$basearch
- enabled=1
-+exclude=pgpool*
- gpgcheck=1
- gpgkey=file:///etc/pki/rpm-gpg/PGDG-RPM-GPG-KEY-RHEL
- repo_gpgcheck = 1
-@@ -73,6 +78,7 @@
- name=PostgreSQL 12 for RHEL / Rocky / AlmaLinux $releasever - $basearch
- baseurl=https://download.postgresql.org/pub/repos/yum/12/redhat/rhel-$releasever-$basearch
- enabled=1
-+exclude=pgpool*
- gpgcheck=1
- gpgkey=file:///etc/pki/rpm-gpg/PGDG-RPM-GPG-KEY-RHEL
- repo_gpgcheck = 1
+    # pgpool-II をインストールする
+    #
+    dnf install -y https://www.pgpool.net/yum/rpms/4.5/redhat/rhel-9-x86_64/pgpool-II-release-4.5-1.noarch.rpm
+    dnf install -y pgpool-II-pg16-*
+}
+
+setup_postgres()
+{
+    #
+    # すべてのサーバにてWALを格納するディレクトリ /var/lib/pgsql/archivedir を事前に作成する。
+    #
+    su - postgres -c "mkdir -p ${POSTGRES_ARCHIVE_DIR}"
+    chmod 700 ${POSTGRES_ARCHIVE_DIR}
+
+    # PGDATA 環境変数を postgres ユーザ以外からも参照できるようにしておく
+    PGDATA=$(su - postgres -c 'echo ${PGDATA}')
+    PGHOME=$(dirname $(dirname $(readlink -f $(which psql))))
+
+    # 再セットアップ時は postgresl を停止させる
+    if su - postgres -c "${PGHOME}/bin/pg_ctl status -D ${PGDATA}"; then
+        su - postgres -c "${PGHOME}/bin/pg_ctl stop -D ${PGDATA}"
+    fi
+
+    #
+    # プライマリサーバで PostgreSQL の初期化を行う
+    #
+    if ${IS_PRIMARY_MODE}; then
+        #
+        # PGDATA/PG_VERSION が無い場合 initdb を実施する
+        # TODO: 強制的に初期化するモードを追加する
+        #
+        if [ ! -f $PGDATA/PG_VERSION ]; then
+            postgresql-16-setup initdb
+        fi
+
+        #
+        # 設定ファイル $PGDATA/postgresql.conf を以下のように編集する。
+        # ---
+        #   pg_rewindを使うためにwal_log_hintsを有効にする。
+        #   プライマリが後でスタンバイになる可能性があるので、hot_standby = onにする。
+        #
+        cp -a -f ${PGDATA}/postgresql.conf ${PGDATA}/postgresql.conf.old
+        (
+            sed -re "/^# KE2-BEGIN/,/^# KE2-END/d" ${PGDATA}/postgresql.conf.old
+            cat <<EOF
+# KE2-BEGIN: ke2 custom settings
+listen_addresses = '*'
+max_connections = ${POSTGRES_MAX_CONNECTIONS}
+wal_level = ${POSTGRES_WAL_LEVEL}
+wal_log_hints = ${POSTGRES_WAL_LOG_HINTS}
+archive_mode = ${POSTGRES_ARCHIVE_MODE}
+archive_command = 'cp "%p" "${POSTGRES_ARCHIVE_DIR}/%f"'
+max_wal_senders = ${POSTGRES_MAX_WAL_SENDERS}
+max_replication_slots = ${POSTGRES_MAX_REPLICATION_SLOTS}
+hot_standby = on
+# KE2-END
 EOF
+        ) > ${PGDATA}/postgresql.conf
 
-#
-# pgpool-II をインストールする
-#
-dnf install -y https://www.pgpool.net/yum/rpms/4.5/redhat/rhel-9-x86_64/pgpool-II-release-4.5-1.noarch.rpm
-dnf install -y pgpool-II-pg16-*
+        #
+        # プライマリサーバで PostgreSQL を起動する
+        #
+        su - postgres -c "${PGHOME}/bin/pg_ctl start -D ${PGDATA}"
 
-#
-# すべてのサーバにてWALを格納するディレクトリ/var/lib/pgsql/archivedirを事前に作成する。
-#
-PGPOOL_ARCHIVE_DIR=/var/lib/pgsql/archivedir
-su - postgres -c "mkdir -p ${PGPOOL_ARCHIVE_DIR}"
+        #
+        # PostgreSQL ユーザを作成する
+        #
+        #  - repl/repl: PostgreSQL のレプリケーション専用
+        #  - pgpool/pgpool: Pgpool-IIのレプリケーション遅延チェック(sr_check_user)、 ヘルスチェック専用ユーザ(health_check_user)。pg_monitorグループに所属させる
+        #  - postgres/postgres: オンラインリカバリの実行ユーザ
+        #  - kompira/kompira: Kompira アクセス用ユーザ (スーパーユーザ権限が必要)
+        #
+        if [ $(sudo -i -u postgres psql -t -c "SELECT EXISTS (SELECT * FROM pg_user WHERE usename = '${PG_POOL_USER}');") != t ]; then
+            sudo -i -u postgres createuser -e ${PG_POOL_USER}
+        fi
+        if [ $(sudo -i -u postgres psql -t -c "SELECT EXISTS (SELECT * FROM pg_user WHERE usename = '${PG_REPL_USER}');") != t ]; then
+            sudo -i -u postgres createuser -e ${PG_REPL_USER} --replication
+        fi
+        if [ $(sudo -i -u postgres psql -t -c "SELECT EXISTS (SELECT * FROM pg_user WHERE usename = '${PG_KOMPIRA_USER}');") != t ]; then
+            sudo -i -u postgres createuser -e ${PG_KOMPIRA_USER} --createdb
+        fi
+        sudo -i -u postgres psql -c "ALTER ROLE ${PG_USER} PASSWORD '${PG_PASS}'"
+        sudo -i -u postgres psql -c "ALTER ROLE ${PG_REPL_USER} PASSWORD '${PG_REPL_PASS}'"
+        sudo -i -u postgres psql -c "ALTER ROLE ${PG_POOL_USER} PASSWORD '${PG_POOL_PASS}'"
+        sudo -i -u postgres psql -c "ALTER ROLE ${PG_KOMPIRA_USER} PASSWORD '${PG_KOMPIRA_PASS}'"
+        sudo -i -u postgres psql -c "GRANT pg_monitor TO ${PG_POOL_USER}"
+        #
+        # Kompira用データベースを作成する
+        #
+        if ! sudo -i -u postgres psql -d ${PG_KOMPIRA_DB} -c \\q; then
+            sudo -i -u postgres createdb --owner=${PG_KOMPIRA_USER} --encoding=utf8 ${PG_KOMPIRA_DB}
+        fi
 
-PGDATA=$(su - postgres -c 'echo ${PGDATA}') # PGDATA 環境変数を postgres ユーザ以外からも参照できるようにしておく
-#
-# プライマリサーバで PostgreSQL の初期化を行う
-#
-if ${IS_PRIMARY_MODE}; then
-    postgresql-16-setup initdb
-    #
-    # 設定ファイル $PGDATA/postgresql.conf を以下のように編集する。
-    # ---
-    #   pg_rewindを使うためにwal_log_hintsを有効にする。
-    #   プライマリが後でスタンバイになる可能性があるので、hot_standby = onにする。
-    #
-    patch -N ${PGDATA}/postgresql.conf <<'EOF'
---- postgresql.conf	2024-06-05 09:40:50.969136122 +0900
-+++ /var/lib/pgsql/16/data/postgresql.conf	2024-06-05 09:43:12.789063174 +0900
-@@ -57,12 +57,12 @@
- 
- # - Connection Settings -
- 
--#listen_addresses = 'localhost'		# what IP address(es) to listen on;
-+listen_addresses = '*'			# what IP address(es) to listen on;
-					# comma-separated list of addresses;
-					# defaults to 'localhost'; use '*' for all
-					# (change requires restart)
- #port = 5432				# (change requires restart)
--max_connections = 100			# (change requires restart)
-+max_connections = 256			# (change requires restart)
- #reserved_connections = 0		# (change requires restart)
- #superuser_reserved_connections = 3	# (change requires restart)
- #unix_socket_directories = '/run/postgresql' # comma-separated list of directories
-@@ -208,7 +208,7 @@
- 
- # - Settings -
- 
--#wal_level = replica			# minimal, replica, or logical
-+wal_level = replica			# minimal, replica, or logical
- 					# (change requires restart)
- #fsync = on				# flush data to disk for crash safety
- 					# (turning this off can cause
-@@ -223,7 +223,7 @@
- 					#   fsync_writethrough
- 					#   open_sync
- #full_page_writes = on			# recover from partial page writes
--#wal_log_hints = off			# also do full page writes of non-critical updates
-+wal_log_hints = on			# also do full page writes of non-critical updates
- 					# (change requires restart)
- #wal_compression = off			# enables compression of full-page writes;
- 					# off, pglz, lz4, zstd, or on
-@@ -255,12 +255,13 @@
- 
- # - Archiving -
- 
--#archive_mode = off		# enables archiving; off, on, or always
-+archive_mode = on		# enables archiving; off, on, or always
- 				# (change requires restart)
- #archive_library = ''		# library to use to archive a WAL file
- 				# (empty string indicates archive_command should
- 				# be used)
--#archive_command = ''		# command to use to archive a WAL file
-+archive_command = 'cp "%p" "/var/lib/pgsql/archivedir/%f"'
-+				# command to use to archive a WAL file
- 				# placeholders: %p = path of file to archive
- 				#               %f = file name only
- 				# e.g. 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f'
-@@ -311,9 +312,9 @@
- 
- # Set these on the primary and on any standby that will send replication data.
- 
--#max_wal_senders = 10		# max number of walsender processes
-+max_wal_senders = 10		# max number of walsender processes
- 				# (change requires restart)
--#max_replication_slots = 10	# max number of replication slots
-+max_replication_slots = 10	# max number of replication slots
- 				# (change requires restart)
- #wal_keep_size = 0		# in megabytes; 0 disables
- #max_slot_wal_keep_size = -1	# in megabytes; -1 disables
-@@ -336,7 +337,7 @@
- 
- #primary_conninfo = ''			# connection string to sending server
- #primary_slot_name = ''			# replication slot on sending server
--#hot_standby = on			# "off" disallows queries during recovery
-+hot_standby = on			# "off" disallows queries during recovery
- 					# (change requires restart)
- #max_standby_archive_delay = 30s	# max delay before canceling queries
- 					# when reading WAL from archive;
+        #
+        # Pgpool-IIサーバとPostgreSQLバックエンドサーバが同じサブネットワークにあることを想定し、
+        # 各ユーザがscram-sha-256認証方式で接続するように、pg_hba.confを編集する
+        #
+        cp -a -f ${PGDATA}/pg_hba.conf ${PGDATA}/pg_hba.conf.old
+        (
+            sed -re "/^# KE2-BEGIN/,/^# KE2-END/d" ${PGDATA}/pg_hba.conf.old
+            cat <<EOF
+# KE2-BEGIN: ke2 custom settings
+host    all             ${PG_POOL_USER}          ${HBA_CLUSTER_ADDRESS}                 scram-sha-256
+host    all             ${PG_USER}        ${HBA_CLUSTER_ADDRESS}                 scram-sha-256
+host    replication     all             ${HBA_CLUSTER_ADDRESS}                 scram-sha-256
+host    ${PG_KOMPIRA_DB}         ${PG_KOMPIRA_USER}         ${HBA_KOMPIRA_ADDRESS}                 scram-sha-256
+# KE2-END
 EOF
+        ) > ${PGDATA}/pg_hba.conf
+
+        #
+        # pg_hba.conf を修正したので、PostgreSQL を再起動する
+        #
+        su - postgres -c "${PGHOME}/bin/pg_ctl restart -D ${PGDATA}"
+    else
+        #
+        # スタンバイサーバは、後ほどオンラインリカバリ機能を用いてセットアップする
+        #
+        :
+    fi
     #
-    # プライマリサーバで PostgreSQL を起動する
+    # .pgpassの作成
     #
-    su - postgres -c '/usr/pgsql-16/bin/pg_ctl start -D ${PGDATA}'
+    # パスワード入力なしで、ストリーミングレプリケーションやpg_rewindを実
+    # 行するために、すべてのサーバでpostgresユーザのホームディレクトリ
+    # /var/lib/pgsqlに.pgpassを作成し、パーミッションを600に設定しておく
     #
-    # PostgreSQL ユーザを作成する
+    PG_PASS_FILE=/var/lib/pgsql/.pgpass
+    for host in ${CLUSTER_HOSTS}; do
+        su - postgres -c "grep -qs '${host}:5432:replication:${PG_REPL_USER}:' ${PG_PASS_FILE} || echo '${host}:5432:replication:${PG_REPL_USER}:${PG_REPL_PASS}' >> ${PG_PASS_FILE}"
+        su - postgres -c "grep -qs '${host}:5432:postgres:${PG_USER}:' ${PG_PASS_FILE} || echo '${host}:5432:postgres:${PG_USER}:${PG_PASS}' >> ${PG_PASS_FILE}"
+    done
+    chmod 600 /var/lib/pgsql/.pgpass
+}
+
+setup_firewall()
+{
     #
-    #  - repl/repl: PostgreSQL のレプリケーション専用
-    #  - pgpool/pgpool: Pgpool-IIのレプリケーション遅延チェック(sr_check_user)、 ヘルスチェック専用ユーザ(health_check_user)。pg_monitorグループに所属させる
-    #  - postgres/postgres: オンラインリカバリの実行ユーザ
-    #  - kompira/kompira: Kompira アクセス用ユーザ (スーパーユーザ権限が必要)
+    # firewall の設定
     #
-    sudo -i -u postgres createuser -e ${PG_POOL_USER}
-    sudo -i -u postgres createuser -e ${PG_REPL_USER} --replication
-    sudo -i -u postgres createuser -e ${PG_KOMPIRA_USER} --createdb
-    sudo -i -u postgres psql -c "ALTER ROLE ${PG_USER} PASSWORD '${PG_PASS}'"
-    sudo -i -u postgres psql -c "ALTER ROLE ${PG_REPL_USER} PASSWORD '${PG_REPL_PASS}'"
-    sudo -i -u postgres psql -c "ALTER ROLE ${PG_POOL_USER} PASSWORD '${PG_POOL_PASS}'"
-    sudo -i -u postgres psql -c "ALTER ROLE ${PG_KOMPIRA_USER} PASSWORD '${PG_KOMPIRA_PASS}'"
-    sudo -i -u postgres psql -c "GRANT pg_monitor TO ${PG_POOL_USER}"
+    # ポート番号	用途	備考
+    # 9999	Pgpool-IIが接続を受け付けるポート番号
+    # 9898	PCPプロセスが接続を受け付けるポート番号
+    # 9000	Watchdogが接続を受け付けるポート番号
+    # 9694	Watchdogのハートビート信号を受信するUDPポート番号
     #
-    # Kompira用データベースを作成する
+    firewall-cmd --permanent --zone=public --add-service=postgresql
+    firewall-cmd --permanent --zone=public --add-port=9999/tcp --add-port=9898/tcp --add-port=9000/tcp  --add-port=9694/udp
+    firewall-cmd --reload
+}
+
+setup_pgpool()
+{
     #
-    sudo -i -u postgres createdb  --owner=${PG_KOMPIRA_USER} --encoding=utf8 ${PG_KOMPIRA_DB}
+    # pgpool_node_idファイルの作成
     #
-    # Pgpool-IIサーバとPostgreSQLバックエンドサーバが同じサブネットワークにあることを想定し、
-    # 各ユーザがscram-sha-256認証方式で接続するように、pg_hba.confを編集する
+    # Pgpool-II 4.2以降、すべての設定パラメータがすべてのホストで同一にな
+    # りました。 Watchdog機能が有効になっている場合、どの設定がどのホスト
+    # であるかを区別するには、 pgpool_node_idファイルの設定が必要になりま
+    # す。 pgpool_node_idファイルを作成し、 そのファイルにpgpool(watchdog)
+    # ホストを識別するためのノード番号(0、1、2など)を追加します。
     #
-    patch -N ${PGDATA}/pg_hba.conf <<'EOF'
---- /var/lib/pgsql/16/data/pg_hba.conf  2024-06-10 13:36:50.813464708 +0900
-+++ pg_hba.conf 2024-06-10 13:38:07.108605215 +0900
-@@ -120,3 +120,7 @@
- local   replication     all                                     peer
- host    replication     all             127.0.0.1/32            scram-sha-256
- host    replication     all             ::1/128                 scram-sha-256
-+host    all             pgpool          samenet                 scram-sha-256
-+host    all             postgres        samenet                 scram-sha-256
-+host    replication     all             samenet                 scram-sha-256
-+host    kompira         kompira         samenet                 scram-sha-256
+    echo ${NODE_ID} > ${PGPOOL_CONF_PATH}/pgpool_node_id
+
+    #
+    # PCP接続認証の設定
+    #
+    # PCPコマンドを使用するために、username:encryptedpassword形式のPCPユーザ名とmd5暗号化パスワードをpcp.confに登録する
+    #
+    local PCP_CONF_FILE=${PGPOOL_CONF_PATH}/pcp.conf
+    grep -qs "${PG_POOL_USER}:" ${PCP_CONF_FILE} || echo "${PG_POOL_USER}:$(pg_md5 ${PG_POOL_PASS})" >> ${PCP_CONF_FILE}
+
+    #
+    # Pgpool-II の設定
+    #
+    # RPMからインストールした場合、Pgpool-IIの設定ファイル pgpool.confは/etc/pgpool-IIにあります。
+    #
+    # Pgpool-II 4.2以降、すべての設定パラメーターがすべてのホストで同一に
+    # なったので、 どれか一つのノード上でpgpool.confを編集し、 編集した
+    # pgpool.confファイルを他のpgpoolノードにコピーすれば良いです。
+    #
+    local PGPOOL_KE2_BACKENDS_CONF=pgpool.ke2-backends.conf
+    cp -a -f ${PGPOOL_CONF_PATH}/pgpool.conf ${PGPOOL_CONF_PATH}/pgpool.conf.old
+    (
+        sed -re "/^# KE2-BEGIN/,/^# KE2-END/d" ${PGPOOL_CONF_PATH}/pgpool.conf.old
+        cat <<EOF
+# KE2-BEGIN: ke2 custom settings
+listen_addresses = '*'
+pcp_listen_addresses = '*'
+enable_pool_hba = on
+num_init_children = ${PGPOOL_NUM_INIT_CHILDREN}
+log_rotation_size = 10MB 
+load_balance_mode = ${PGPOOL_LOAD_BALANCE_MODE}
+sr_check_user = '${PG_POOL_USER}'
+follow_primary_command = '${PGPOOL_CONF_PATH}/follow_primary.sh %d %h %p %D %m %H %M %P %r %R'
+health_check_period = 5
+health_check_timeout = 30
+health_check_user = '${PG_POOL_USER}'
+health_check_max_retries = 3
+failover_command = '${PGPOOL_CONF_PATH}/failover.sh %d %h %p %D %m %H %M %P %r %R %N %S'
+recovery_user = '${PG_USER}'
+recovery_1st_stage_command = 'recovery_1st_stage'
+use_watchdog = ${PGPOOL_USE_WATCHDOG}
+delegate_ip = '${CLUSTER_VIP}'
+if_up_cmd = '/usr/bin/sudo /sbin/ip addr add \$_IP_\$/${IF_PREFIX} dev ${IF_NAME} label ${IF_NAME}:0'
+if_down_cmd = '/usr/bin/sudo /sbin/ip addr del \$_IP_\$/${IF_PREFIX} dev ${IF_NAME}'
+arping_cmd = '/usr/bin/sudo /usr/sbin/arping -U \$_IP_\$ -w 1 -I ${IF_NAME}'
+wd_escalation_command = '${PGPOOL_CONF_PATH}/escalation.sh'
+include '${PGPOOL_KE2_BACKENDS_CONF}'
+# KE2-END
 EOF
+    ) > ${PGPOOL_CONF_PATH}/pgpool.conf
+
     #
-    # pg_hba.conf を修正したので、PostgreSQL を起動する
+    # また、バックエンド情報を前述のke2-swarm1、ke2-swarm2 及びke2-swarm3
+    # の設定に従って設定しておきます。 複数バックエンドノードを定義する場
+    # 合、以下のbackend_*などのパラメータ名の 末尾にノードIDを表す数字を付
+    # 加することで複数のバックエンドを指定することができます
     #
-    su - postgres -c '/usr/pgsql-16/bin/pg_ctl restart -D ${PGDATA}'
-else
-    #
-    # スタンバイサーバは、後ほどオンラインリカバリ機能を用いてセットアップする
-    #
-    :
-fi
-#
-# .pgpassの作成
-#
-# パスワード入力なしで、ストリーミングレプリケーションやpg_rewindを実
-# 行するために、すべてのサーバでpostgresユーザのホームディレクトリ
-# /var/lib/pgsqlに.pgpassを作成し、パーミッションを600に設定しておく
-#
-PG_PASS_FILE=/var/lib/pgsql/.pgpass
-for host in ${CLUSTER_HOSTS}; do
-    su - postgres -c "grep -qs '${host}:5432:replication:${PG_REPL_USER}:' ${PG_PASS_FILE} || echo '${host}:5432:replication:${PG_REPL_USER}:${PG_REPL_PASS}' >> ${PG_PASS_FILE}"
-    su - postgres -c "grep -qs '${host}:5432:postgres:${PG_USER}:' ${PG_PASS_FILE} || echo '${host}:5432:postgres:${PG_USER}:${PG_PASS}' >> ${PG_PASS_FILE}"
-done
-chmod 600 /var/lib/pgsql/.pgpass
-
-#
-# firewall の設定
-#
-# ポート番号	用途	備考
-# 9999	Pgpool-IIが接続を受け付けるポート番号	
-# 9898	PCPプロセスが接続を受け付けるポート番号	
-# 9000	Watchdogが接続を受け付けるポート番号	
-# 9694	Watchdogのハートビート信号を受信するUDPポート番号
-#
-firewall-cmd --permanent --zone=public --add-service=postgresql
-firewall-cmd --permanent --zone=public --add-port=9999/tcp --add-port=9898/tcp --add-port=9000/tcp  --add-port=9694/udp
-firewall-cmd --reload
-
-#
-# pgpool_node_idファイルの作成
-#
-# Pgpool-II 4.2以降、すべての設定パラメータがすべてのホストで同一にな
-# りました。 Watchdog機能が有効になっている場合、どの設定がどのホスト
-# であるかを区別するには、 pgpool_node_idファイルの設定が必要になりま
-# す。 pgpool_node_idファイルを作成し、 そのファイルにpgpool(watchdog)
-# ホストを識別するためのノード番号(0、1、2など)を追加します。
-#
-echo ${NODE_ID} > /etc/pgpool-II/pgpool_node_id
-
-#
-# PCP接続認証の設定
-#
-# PCPコマンドを使用するために、username:encryptedpassword形式のPCPユーザ名とmd5暗号化パスワードをpcp.confに登録する
-#
-PCP_CONF_FILE=/etc/pgpool-II/pcp.conf
-grep -qs "${PG_POOL_USER}:" ${PCP_CONF_FILE} || echo "${PG_POOL_USER}:$(pg_md5 ${PG_POOL_PASS})" >> ${PCP_CONF_FILE}
-
-#
-# Pgpool-II の設定
-#
-# RPMからインストールした場合、Pgpool-IIの設定ファイル pgpool.confは/etc/pgpool-IIにあります。
-#
-# Pgpool-II 4.2以降、すべての設定パラメーターがすべてのホストで同一に
-# なったので、 どれか一つのノード上でpgpool.confを編集し、 編集した
-# pgpool.confファイルを他のpgpoolノードにコピーすれば良いです。
-#
-PGPOOL_CONF_FILE=/etc/pgpool-II/pgpool.conf
-patch -N ${PGPOOL_CONF_FILE} <<EOF
---- pgpool.conf.orig	2024-06-06 11:24:23.607627712 +0900
-+++ /etc/pgpool-II/pgpool.conf	2024-06-06 13:35:06.475194279 +0900
-@@ -32,7 +32,7 @@
- 
- # - pgpool Connection Settings -
- 
--#listen_addresses = 'localhost'
-+listen_addresses = '*'
-                                    # what host name(s) or IP address(es) to listen on;
-                                    # comma-separated list of addresses;
-                                    # defaults to 'localhost'; use '*' for all
-@@ -59,7 +59,7 @@
- 
- # - pgpool Communication Manager Connection Settings -
- 
--#pcp_listen_addresses = 'localhost'
-+pcp_listen_addresses = '*'
-                                    # what host name(s) or IP address(es) for pcp process to listen on;
-                                    # comma-separated list of addresses;
-                                    # defaults to 'localhost'; use '*' for all
-@@ -105,7 +105,7 @@
- 
- # - Authentication -
- 
--#enable_pool_hba = off
-+enable_pool_hba = on
-                                    # Use pool_hba.conf for client authentication
- #pool_passwd = 'pool_passwd'
-                                    # File name of pool_passwd for md5 authentication.
-@@ -193,7 +193,7 @@
-                                    #
-                                    # (Only applicable for dynamic process management mode)
-
--#num_init_children = 32
-+num_init_children = 64
-                                    # Maximum Number of concurrent sessions allowed
-                                    # (change requires restart)
- #min_spare_children = 5
-@@ -332,7 +332,7 @@
-                                         # Automatic rotation of logfiles will
-                                         # happen after that (minutes)time.
-                                         # 0 disables time based rotation.
--log_rotation_size = 0 
-+log_rotation_size = 10MB 
-                                         # Automatic rotation of logfiles will
-                                         # happen after that much (KB) log output.
-                                         # 0 disables size based rotation.
-@@ -408,7 +408,7 @@
- # LOAD BALANCING MODE
- #------------------------------------------------------------------------------
-
--#load_balance_mode = on
-+load_balance_mode = off
-                                    # Activate load balancing mode
-                                    # (change requires restart)
- #ignore_leading_white_space = on
-@@ -503,7 +503,7 @@
- #sr_check_period = 10
-                                    # Streaming replication check period
-                                    # Default is 10s.
--#sr_check_user = 'nobody'
-+sr_check_user = 'pgpool'
-                                    # Streaming replication check user
-                                    # This is necessary even if you disable streaming
-                                    # replication delay check by sr_check_period = 0
-@@ -531,7 +531,7 @@
- 
- # - Special commands -
- 
--#follow_primary_command = ''
-+follow_primary_command = '/etc/pgpool-II/follow_primary.sh %d %h %p %D %m %H %M %P %r %R'
-                                    # Executes this command after main node failover
-                                    # Special values:
-                                    #   %d = failed node id
-@@ -552,13 +552,13 @@
- # HEALTH CHECK GLOBAL PARAMETERS
- #------------------------------------------------------------------------------
- 
--#health_check_period = 0
-+health_check_period = 5
-                                    # Health check period
-                                    # Disabled (0) by default
--#health_check_timeout = 20
-+health_check_timeout = 30
-                                    # Health check timeout
-                                    # 0 means no timeout
--#health_check_user = 'nobody'
-+health_check_user = 'pgpool'
-                                    # Health check user
- #health_check_password = ''
-                                    # Password for health check user
-@@ -567,7 +567,7 @@
- 
- #health_check_database = ''
-                                    # Database name for health check. If '', tries 'postgres' frist, 
--#health_check_max_retries = 0
-+health_check_max_retries = 3
-                                    # Maximum number of times to retry a failed health check before giving up.
- #health_check_retry_delay = 1
-                                    # Amount of time to wait (in seconds) between retries.
-@@ -594,7 +594,7 @@
- # FAILOVER AND FAILBACK
- #------------------------------------------------------------------------------
- 
--#failover_command = ''
-+failover_command = '/etc/pgpool-II/failover.sh %d %h %p %D %m %H %M %P %r %R %N %S'
-                                    # Executes this command at failover
-                                    # Special values:
-                                    #   %d = failed node id
-@@ -655,14 +655,14 @@
- # ONLINE RECOVERY
- #------------------------------------------------------------------------------
- 
--#recovery_user = 'nobody'
-+recovery_user = 'postgres'
-                                    # Online recovery user
- #recovery_password = ''
-                                    # Online recovery password
-                                    # Leaving it empty will make Pgpool-II to first look for the
-                                    # Password in pool_passwd file before using the empty password
- 
--#recovery_1st_stage_command = ''
-+recovery_1st_stage_command = 'recovery_1st_stage'
-                                    # Executes a command in first stage
- #recovery_2nd_stage_command = ''
-                                    # Executes a command in second stage
-@@ -690,7 +690,7 @@
- 
- # - Enabling -
- 
--#use_watchdog = off
-+use_watchdog = on
-                                     # Activates watchdog
-                                     # (change requires restart)
- 
-@@ -745,7 +745,7 @@
- 
- # - Virtual IP control Setting -
- 
--#delegate_ip = ''
-+delegate_ip = '${CLUSTER_VIP}'
-                                     # delegate IP address
-                                     # If this is empty, virtual IP never bring up.
-                                     # (change requires restart)
-@@ -753,17 +753,17 @@
-                                     # path to the directory where if_up/down_cmd exists
-                                     # If if_up/down_cmd starts with "/", if_cmd_path will be ignored.
-                                     # (change requires restart)
--#if_up_cmd = '/usr/bin/sudo /sbin/ip addr add \$_IP_\$/24 dev eth0 label eth0:0'
-+if_up_cmd = '/usr/bin/sudo /sbin/ip addr add \$_IP_\$/${IF_PREFIX} dev ${IF_NAME} label ${IF_NAME}:0'
-                                     # startup delegate IP command
-                                     # (change requires restart)
--#if_down_cmd = '/usr/bin/sudo /sbin/ip addr del \$_IP_\$/24 dev eth0'
-+if_down_cmd = '/usr/bin/sudo /sbin/ip addr del \$_IP_\$/${IF_PREFIX} dev ${IF_NAME}'
-                                     # shutdown delegate IP command
-                                     # (change requires restart)
- #arping_path = '/usr/sbin'
-                                     # arping command path
-                                     # If arping_cmd starts with "/", if_cmd_path will be ignored.
-                                     # (change requires restart)
--#arping_cmd = '/usr/bin/sudo /usr/sbin/arping -U \$_IP_\$ -w 1 -I eth0'
-+arping_cmd = '/usr/bin/sudo /usr/sbin/arping -U \$_IP_\$ -w 1 -I ${IF_NAME}'
-                                     # arping command
-                                     # (change requires restart)
- 
-@@ -780,7 +780,7 @@
-                                     # This should be off if client connects to pgpool
-                                     # not using virtual IP.
-                                     # (change requires restart)
--#wd_escalation_command = ''
-+wd_escalation_command = '/etc/pgpool-II/escalation.sh'
-                                     # Executes this command at escalation on new active pgpool.
-                                     # (change requires restart)
- #wd_de_escalation_command = ''
-EOF
-#
-# また、バックエンド情報を前述のke2-swarm1、ke2-swarm2 及びke2-swarm3
-# の設定に従って設定しておきます。 複数バックエンドノードを定義する場
-# 合、以下のbackend_*などのパラメータ名の 末尾にノードIDを表す数字を付
-# 加することで複数のバックエンドを指定することができます
-#
-echo '# - Backend Connection Settings for KE2 -' >> ${PGPOOL_CONF_FILE}
-i=0
-for host in ${CLUSTER_HOSTS}; do
-    cat >> ${PGPOOL_CONF_FILE} <<EOF
+    echo -n > ${PGPOOL_CONF_PATH}/${PGPOOL_KE2_BACKENDS_CONF}
+    local i=0
+    for host in ${CLUSTER_HOSTS}; do
+        cat >> ${PGPOOL_CONF_PATH}/${PGPOOL_KE2_BACKENDS_CONF} <<EOF
 # - Backend Connection Settings for ${host} -
 backend_hostname${i} = '${host}'
 backend_port${i} = 5432
 backend_weight${i} = 1
-backend_data_directory${i} = '/var/lib/pgsql/16/data'
+backend_data_directory${i} = '${PGDATA}'
 backend_flag${i} = 'ALLOW_TO_FAILOVER'
 backend_application_name${i} = '${host}'
 # - Watchdog communication Settings for ${host} -
@@ -537,106 +345,119 @@ pgpool_port${i} = 9999
 heartbeat_hostname${i} = '${host}'
 heartbeat_port${i} = 9694
 heartbeat_device${i} = ''
+
 EOF
-    : $((++i))
-done
+        : $((++i))
+    done
+    chown postgres:postgres ${PGPOOL_CONF_PATH}/${PGPOOL_KE2_BACKENDS_CONF}
 
-#
-# サンプルスクリプトfailover.sh及び follow_primary.shは
-# /etc/pgpool-II/sample_scripts配下にインストールされていますので、こ
-# れらのファイルをコピーして作成します。
-#
-cp -p /etc/pgpool-II/sample_scripts/failover.sh.sample /etc/pgpool-II/failover.sh
-cp -p /etc/pgpool-II/sample_scripts/follow_primary.sh.sample /etc/pgpool-II/follow_primary.sh
-cp -p /etc/pgpool-II/sample_scripts/escalation.sh.sample /etc/pgpool-II/escalation.sh
-chown postgres:postgres /etc/pgpool-II/{failover.sh,follow_primary.sh,escalation.sh}
-#
-# escalation.sh の サーバのホスト名、仮想IP、仮想IPを設定するネットワークインターフェースを修正する
-#
-ed /etc/pgpool-II/escalation.sh <<EOF
-,s/^PGPOOLS=.*/PGPOOLS=(${CLUSTER_HOSTS})/
-,s/^VIP=.*/VIP=${CLUSTER_VIP}/
-,s/^DEVICE=.*/DEVICE=${IF_NAME}/
-,s/\/24 dev/\/${IF_PREFIX} dev/
-w
-q
-EOF
+    #
+    # サンプルスクリプトfailover.sh及び follow_primary.shは
+    # /etc/pgpool-II/sample_scripts配下にインストールされていますので、こ
+    # れらのファイルをコピーして作成します。
+    #
+    cp -p ${PGPOOL_CONF_PATH}/sample_scripts/failover.sh.sample ${PGPOOL_CONF_PATH}/failover.sh
+    cp -p ${PGPOOL_CONF_PATH}/sample_scripts/follow_primary.sh.sample ${PGPOOL_CONF_PATH}/follow_primary.sh
+    cp -p ${PGPOOL_CONF_PATH}/sample_scripts/escalation.sh.sample ${PGPOOL_CONF_PATH}/escalation.sh
+    chown postgres:postgres ${PGPOOL_CONF_PATH}/{failover.sh,follow_primary.sh,escalation.sh}
 
-#
-# 前述のfollow_primary.shのスクリプトでパスワード入力なしでPCPコマンド
-# を実行できるように、すべてのサーバでPgpool-IIの起動ユーザのホームディ
-# レクトリに.pcppassを作成します。
-#
-su - postgres -c "echo 'localhost:9898:${PG_POOL_USER}:${PG_POOL_PASS}' > ~/.pcppass && chmod 600 ~/.pcppass"
-
-if ${IS_PRIMARY_MODE}; then
     #
-    # オンラインリカバリ用のサンプルスクリプトrecovery_1st_stage 及び
-    # pgpool_remote_startは /etc/pgpool-II/sample_scripts配下にインストー
-    # ルされていますので、 これらのファイルをプライマリサーバ(ke2-swarm1)
-    # のデータベースクラスタ配下に配置します。
+    # escalation.sh の サーバのホスト名、仮想IP、仮想IPを設定するネットワークインターフェースを修正する
     #
-    su - postgres -c 'cp -p /etc/pgpool-II/sample_scripts/recovery_1st_stage.sample ${PGDATA}/recovery_1st_stage'
-    su - postgres -c 'cp -p /etc/pgpool-II/sample_scripts/pgpool_remote_start.sample ${PGDATA}/pgpool_remote_start'
-    # ログが文字化けしないよう、LANG 環境変数をセットして pg_ctl を起動する
-    su - postgres -c "sed -i -e 's|\$PGHOME/bin/pg_ctl|LANG=\${LANG} \$PGHOME/bin/pg_ctl|' \${PGDATA}/pgpool_remote_start"
-    #
-    # オンラインリカバリ機能を使用するには、pgpool_recovery、
-    # pgpool_remote_start、pgpool_switch_xlogという関数が必要になるので、
-    # ke2-swarm1のtemplate1にpgpool_recoveryをインストールしておきます。
-    #
-    sudo -i -u postgres psql template1 -c "CREATE EXTENSION pgpool_recovery"
-fi
-
-#
-# Pgpool-IIのクライアント認証の設定ファイルは pool_hba.confと呼ば
-# れ、RPMパッケージからインストールする場合、 デフォルトでは
-# /etc/pgpool-II配下にインストールされます。 
-#
-# pool_hba.confのフォーマットはPostgreSQLの pg_hba.confとほとんど
-# 同じです。 pgpoolとpostgresユーザの認証方式をscram-sha-256に設定
-# します。 この設定例では、Pgpool-IIに接続しているアプリケーション
-# が同じサブネット内にあると想定しています。
-#
-cat >> /etc/pgpool-II/pool_hba.conf <<'EOF'
-host    all         pgpool           samenet          scram-sha-256
-host    all         postgres         samenet          scram-sha-256
-host    kompira     kompira          samenet          scram-sha-256
+    sed -i.old -f- ${PGPOOL_CONF_PATH}/escalation.sh <<EOF
+s/^PGPOOLS=.*/PGPOOLS=(${CLUSTER_HOSTS})/
+s/^VIP=.*/VIP=${CLUSTER_VIP}/
+s/^DEVICE=.*/DEVICE=${IF_NAME}/
+s|/24 dev|/${IF_PREFIX} dev|
 EOF
 
-#
-# Pgpool-IIのクライアント認証で用いるデフォルトのパスワードファイル名
-# はpool_passwdです。 scram-sha-256認証を利用する場合、Pgpool-IIはそれ
-# らのパスワードを復号化するために復号鍵が必要となります。 全サーバで
-# 復号鍵ファイルをPgpool-IIの起動ユーザpostgres (Pgpool-II 4.0以前のバー
-# ジョンでは root) のホームディレクトリ配下に作成します。
-#
-su - postgres -c "echo '${PG_POOL_KEY}' > ~/.pgpoolkey && chmod 600 ~/.pgpoolkey"
-#
-# pg_enc -m -k /path/to/.pgpoolkey -u username -pを実行すると、ユーザ
-# 名とAES256で暗号化したパスワードのエントリがpool_passwdに登録されま
-# す。 pool_passwd がまだ存在しなければ、pgpool.confと同じディレクトリ
-# 内に作成されます。
-#
-TMP_POOL_USERS_FILE=/tmp/pool_users.txt
-cat > ${TMP_POOL_USERS_FILE} <<EOF
+    #
+    # 前述のfollow_primary.shのスクリプトでパスワード入力なしでPCPコマンド
+    # を実行できるように、すべてのサーバでPgpool-IIの起動ユーザのホームディ
+    # レクトリに.pcppassを作成します。
+    #
+    su - postgres -c "echo 'localhost:9898:${PG_POOL_USER}:${PG_POOL_PASS}' > ~/.pcppass && chmod 600 ~/.pcppass"
+
+    if ${IS_PRIMARY_MODE}; then
+        #
+        # オンラインリカバリ用のサンプルスクリプトrecovery_1st_stage 及び
+        # pgpool_remote_startは ${PGPOOL_CONF_PATH}/sample_scripts配下にインストー
+        # ルされていますので、 これらのファイルをプライマリサーバ(ke2-swarm1)
+        # のデータベースクラスタ配下に配置します。
+        #
+        su - postgres -c "cp -p ${PGPOOL_CONF_PATH}/sample_scripts/recovery_1st_stage.sample ${PGDATA}/recovery_1st_stage"
+        su - postgres -c "cp -p ${PGPOOL_CONF_PATH}/sample_scripts/pgpool_remote_start.sample ${PGDATA}/pgpool_remote_start"
+        # ログが文字化けしないよう、LANG 環境変数をセットして pg_ctl を起動する
+        su - postgres -c "sed -i -e 's|\$PGHOME/bin/pg_ctl|LANG=\${LANG} \$PGHOME/bin/pg_ctl|' ${PGDATA}/pgpool_remote_start"
+        #
+        # オンラインリカバリ機能を使用するには、pgpool_recovery、
+        # pgpool_remote_start、pgpool_switch_xlogという関数が必要になるので、
+        # ke2-swarm1のtemplate1にpgpool_recoveryをインストールしておきます。
+        #
+        sudo -i -u postgres psql template1 -c "CREATE EXTENSION IF NOT EXISTS pgpool_recovery"
+    fi
+
+    #
+    # Pgpool-IIのクライアント認証の設定ファイルは pool_hba.confと呼ば
+    # れ、RPMパッケージからインストールする場合、 デフォルトでは
+    # /etc/pgpool-II配下にインストールされます。 
+    #
+    # pool_hba.confのフォーマットはPostgreSQLの pg_hba.confとほとんど
+    # 同じです。 pgpoolとpostgresユーザの認証方式をscram-sha-256に設定
+    # します。 この設定例では、Pgpool-IIに接続しているアプリケーション
+    # が同じサブネット内にあると想定しています。
+    #
+    cp -a -f ${PGPOOL_CONF_PATH}/pool_hba.conf ${PGPOOL_CONF_PATH}/pool_hba.conf.old
+    (
+        sed -re "/^# KE2-BEGIN/,/^# KE2-END/d" ${PGPOOL_CONF_PATH}/pool_hba.conf.old
+        cat <<EOF
+# KE2-BEGIN: ke2 custom settings
+host    all         ${PG_POOL_USER}           ${HBA_CLUSTER_ADDRESS}          scram-sha-256
+host    all         ${PG_USER}         ${HBA_CLUSTER_ADDRESS}          scram-sha-256
+host    ${PG_KOMPIRA_DB}     ${PG_KOMPIRA_USER}          ${HBA_KOMPIRA_ADDRESS}          scram-sha-256
+# KE2-END
+EOF
+    ) > ${PGPOOL_CONF_PATH}/pool_hba.conf
+
+    #
+    # Pgpool-IIのクライアント認証で用いるデフォルトのパスワードファイル名
+    # はpool_passwdです。 scram-sha-256認証を利用する場合、Pgpool-IIはそれ
+    # らのパスワードを復号化するために復号鍵が必要となります。 全サーバで
+    # 復号鍵ファイルをPgpool-IIの起動ユーザpostgres (Pgpool-II 4.0以前のバー
+    # ジョンでは root) のホームディレクトリ配下に作成します。
+    #
+    su - postgres -c "echo '${PG_POOL_KEY}' > ~/.pgpoolkey && chmod 600 ~/.pgpoolkey"
+    #
+    # pg_enc -m -k /path/to/.pgpoolkey -u username -pを実行すると、ユーザ
+    # 名とAES256で暗号化したパスワードのエントリがpool_passwdに登録されま
+    # す。 pool_passwd がまだ存在しなければ、pgpool.confと同じディレクトリ
+    # 内に作成されます。
+    #
+    su - postgres -c "cat | pg_enc -m -k ~/.pgpoolkey -i /dev/stdin" <<EOF
 ${PG_POOL_USER}:${PG_POOL_PASS}
 ${PG_USER}:${PG_PASS}
 ${PG_KOMPIRA_USER}:${PG_KOMPIRA_PASS}
 EOF
-su - postgres -c "pg_enc -m -k ~/.pgpoolkey -i ${TMP_POOL_USERS_FILE}"
-rm ${TMP_POOL_USERS_FILE}
 
-#
-# すべてのサーバでログファイルを格納するディレクトリを作成します。
-# (インストールした時点で作成されているかもしれない)
-#
-mkdir -p /var/log/pgpool_log
-chown postgres:postgres /var/log/pgpool_log
+    #
+    # すべてのサーバでログファイルを格納するディレクトリを作成します。
+    # (インストールした時点で作成されているかもしれない)
+    #
+    mkdir -p /var/log/pgpool_log
+    chown postgres:postgres /var/log/pgpool_log
+}
 
-echo "======================================================="
+check_node_id
+install_packages_on_rhel9
+setup_postgres
+setup_firewall
+setup_pgpool
+
+echo "==============================================================================="
 echo " PostgreSQL/Pgpool-II のセットアップが終了しました。"
 echo ""
 echo " すべてのホストで setup_pgpool.sh の実行が終了した後、"
-echo " 各ホスト上で改めて setup_pgssh.sh を実行してください。"
-echo "======================================================="
+echo " 各ホスト上で改めて CLUSTER_HOSTS を指定して setup_pgssh.sh を実行してください。"
+echo
+echo "$ sudo CLUSTER_HOSTS=\"$CLUSTER_HOSTS\" ./setup_pgssh.sh"
+echo "==============================================================================="
