@@ -27,6 +27,9 @@ services:
     configs:
       - source: rabbitmq-config-cluster
         target: /etc/rabbitmq/conf.d/50-cluster.conf
+    volumes:
+      # Swarm 構成では RABBITMQ_DATA_DIR を名前付きボリュームに bind して再起動時にクラスタ再加入できるようにする
+      - ${RABBITMQ_DATA_DIR:-kompira_rmq}:/var/lib/rabbitmq
     environment:
       RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-SECRET_COOKIE}
       RABBITMQ_USE_LONGNAME: ${RABBITMQ_USE_LONGNAME:-false}
@@ -57,3 +60,5 @@ services:
 configs:
   rabbitmq-config-cluster:
     file: ./rabbitmq-cluster.conf
+volumes:
+  kompira_rmq:
