@@ -1,6 +1,6 @@
-# Kompira Enterprise 2.0: シングル DB 外部構成
+# Kompira Enterprise 2.0: 外部DBシングル構成
 
-このディレクトリにはオンプレ環境でのシングル DB 外部構成用の Docker Compose ファイルが含まれています。
+このディレクトリにはオンプレ環境での外部DBシングル構成用の Docker Compose ファイルが含まれています。
 
 この構成では Kompira Enterprise に必要なミドルウェアのうち、データベース以外を Docker コンテナで動作させます。
 データベースについては必要な設定を行なった PostgreSQL をユーザ側で事前に準備していただく必要があります。
@@ -85,11 +85,13 @@ postgresql.conf (RHEL系標準パッケージをインストールした場合�
     $ ../../../scripts/create-cert.sh
 
 次に、データベース上でのパスワード情報などの暗号化に用いる秘密鍵をファイル `.secret_key` に準備します。
-Kompira 用データベースを新規に構築する場合は、以下のようにして空のファイルを用意してください。
+Kompira 用データベースを新規に構築する場合は、たとえば以下のようにして空のファイルを用意してください。
 
     $ touch .secret_key
 
 ※ 外部データベースとして既に構築されている Kompira データベースを用いる場合は、そのデータベースにおける秘密鍵を `.secret_key` に書き込んでおいてください。
+
+    $ echo -n 'xxxxxxxxxxxxxxxx' > .secret_key
 
 続けて、以下のコマンドを実行して Kompira Enterprise 開始をします。
 このとき先に準備した環境変数 DATABASE_URL を指定するようにしてください。

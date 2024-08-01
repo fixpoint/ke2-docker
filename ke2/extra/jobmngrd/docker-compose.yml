@@ -1,0 +1,4 @@
+# 外部 jobmngrd 構成
+name: ke2
+include:
+  - ../../services/jobmngrd.yml

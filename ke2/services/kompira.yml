@@ -17,6 +17,7 @@ x-kompira-common-environ:
   CACHE_URL: ${CACHE_URL:-redis://redis:6379}
   LANGUAGE_CODE: ${LANGUAGE_CODE:-ja}
   TZ: ${TZ:-Asia/Tokyo}
+  KOMPIRA_AUDIT_LOGGING_LEVEL: ${AUDIT_LOGGING_LEVEL:-}
 
 services:
   kengine:

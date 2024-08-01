@@ -1,0 +1,23 @@
+2024-08-01  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* 外部 jobmngrd 構成 (ke2/extra/jobmngrd) を追加しました。
+
+2024-07-26  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* nginx コンテナのバージョンを 1.27-alpine にアップデートしました。(#30)
+
+	* postgresql コンテナのバージョンを 16.3-alpine にアップデートしました。PGDATA 領域のボリューム名を変更しました。(#30)
+
+2024-07-25  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* nginx -> uwsgi の send/recv タイムアウトを 300 秒に設定しました。(#22)
+
+	* 監査ログ(audit.log)の記録レベル値を環境変数 AUDIT_LOGGING_LEVEL で指定できるようにしました。(#28)
+
+	* rabbitmq コンテナを 3.13-alpine にアップデートしました。 (#26)
+
+2024-07-19  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* ホスト名が FQDN でないときに rabbitmq-server が正常動作しない場合が問題を修正しました。(#16)
+
+
