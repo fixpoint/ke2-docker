@@ -1,0 +1,7 @@
+services:
+  jobmngrd:
+    logging:
+      driver: local
+    environment:
+      - AMQP_URL=${AMQP_URL:-amqps://kompira:kompira@${AMQP_HOST:-rabbitmq}:5671}
+    restart: always
