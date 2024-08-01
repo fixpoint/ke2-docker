@@ -1,4 +1,4 @@
-# シングル外部DB構成
+# 外部DBシングル構成
 name: ke2
 include:
   - ../../services/redis.yml

@@ -1,4 +1,4 @@
-# シングル基本構成
+# 標準シングル構成
 name: ke2
 include:
   - ../../services/redis.yml

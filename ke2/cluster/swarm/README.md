@@ -1,4 +1,4 @@
-# Kompira Enterprise 2.0: クラスタ Swarm 構成
+# Kompira Enterprise 2.0: Swarm クラスタ構成
 
 このディレクトリには Docker Swarm クラスタ上に複数のエンジンコンテナを
 デプロイするための、Docker Compose ファイルが含まれています。

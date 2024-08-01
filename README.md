@@ -10,12 +10,12 @@ Kompira Enterprise は IT 運用管理業務の自動化を支援するための
 このリポジトリには、以下の各種デプロイの構成に対応した Kompira Enterprise の **Docker Compose ファイル** が含まれています。
 
 * オンプレシングル
-    * [シングル標準構成](ke2/single/basic)
-    * [シングルDB外部構成](ke2/single/extdb)
+    * [標準シングル構成](ke2/single/basic)
+    * [外部DBシングル構成](ke2/single/extdb)
 * オンプレクラスタ
-    * [クラスタSwarm構成](ke2/cluster/swarm)
+    * [Swarmクラスタ構成](ke2/cluster/swarm)
 * クラウド
-    * [Azure Container Instances 構成](ke2/cloud/azureci)
+    * [AzureCI構成](ke2/cloud/azureci)
 
 
 ## 3. クイックスタート

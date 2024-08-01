@@ -1,4 +1,4 @@
-# クラスタ Swarm 構成
+# Swarm クラスタ構成
 include:
   - ../../services/redis.yml
   - ../../services/rabbitmq.yml

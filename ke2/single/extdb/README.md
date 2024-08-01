@@ -1,6 +1,6 @@
-# Kompira Enterprise 2.0: シングル DB 外部構成
+# Kompira Enterprise 2.0: 外部DBシングル構成
 
-このディレクトリにはオンプレ環境でのシングル DB 外部構成用の Docker Compose ファイルが含まれています。
+このディレクトリにはオンプレ環境での外部DBシングル構成用の Docker Compose ファイルが含まれています。
 
 この構成では Kompira Enterprise に必要なミドルウェアのうち、データベース以外を Docker コンテナで動作させます。
 データベースについては必要な設定を行なった PostgreSQL をユーザ側で事前に準備していただく必要があります。
