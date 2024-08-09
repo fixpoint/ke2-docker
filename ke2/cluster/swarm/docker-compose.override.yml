@@ -54,6 +54,8 @@ services:
     deploy: *multi-replicated
   nginx:
     hostname: "nx-{{.Node.Hostname}}"
+    environment:
+      - KOMPIRA_HOST=${KOMPIRA_HOST:-ap-<<.Node.Hostname>>}
     logging: *default-logging
     deploy: *multi-replicated
 
