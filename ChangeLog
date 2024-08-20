@@ -1,3 +1,7 @@
+2024-08-20  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* docker-compose-plugin について v2.24.6 以上が必要であることを追記しました。(#41)
+
 2024-08-01  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* 外部 jobmngrd 構成 (ke2/extra/jobmngrd) を追加しました。
