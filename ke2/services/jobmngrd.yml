@@ -4,10 +4,15 @@ services:
     hostname: jm-${HOSTNAME}
     init: true
     environment:
-      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
-      - TZ=${TZ:-Asia/Tokyo}
-      - LOGGING_LEVEL=${JOBMNGRD_LOGGING_LEVEL:-${LOGGING_LEVEL:-INFO}}
-      - LOGGING_NAME=jobmngrd
+      AMQP_URL: ${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+      TZ: ${TZ:-Asia/Tokyo}
+      LOGGING_NAME: jobmngrd
+      LOGGING_STREAM: ${JOBMNGRD_LOGGING_STREAM:-${LOGGING_STREAM:-true}}
+      LOGGING_LEVEL: ${JOBMNGRD_LOGGING_LEVEL:-${LOGGING_LEVEL:-INFO}}
+      LOGGING_DIR: ${JOBMNGRD_LOGGING_DIR:-${LOGGING_DIR:-/var/log/kompira}}
+      LOGGING_BACKUP: ${JOBMNGRD_LOGGING_BACKUP:-${LOGGING_BACKUP:-7}}
+      LOGGING_WHEN: ${JOBMNGRD_LOGGING_WHEN:-${LOGGING_WHEN:-MIDNIGHT}}
+      LOGGING_INTERVAL: ${JOBMNGRD_LOGGING_INTERVAL:-${LOGGING_INTERVAL:-1}}
     configs:
       - source: kompira-config
         target: /opt/kompira/kompira.conf
