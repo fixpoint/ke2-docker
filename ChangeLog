@@ -1,3 +1,7 @@
+2024-08-27  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* rabbimq の cluster_partition_handling 設定を pause_minority に更新しました。(#50)
+
 2024-08-20  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* 環境変数 ${KOMPIRA_HOST}, ${KOMPIRA_PORT} で nginx の upstream django サーバを指定できるようにしました。(#44)
