@@ -1,7 +1,7 @@
 services:
   nginx:
     image: registry.hub.docker.com/library/nginx:1.27-alpine
-    hostname: nx-${HOSTNAME}
+    hostname: nx-${HOSTNAME:?HOSTNAME must be set}
     environment:
       - TZ=${TZ:-Asia/Tokyo}
       - NGINX_ENVSUBST_FILTER=^KOMPIRA

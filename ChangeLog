@@ -1,3 +1,13 @@
+2024-09-02  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* ログ設定 (LOGGING_XXX, AUDIT_LOGGING_XXX) を環境変数で指定できるようにしました。(#54)
+
+	* 最大エグゼキュータ数 (MAX_EXECUTOR_NUM) を環境変数で指定できるようにしました。(#54)
+
+	* 環境変数 HOSTNAME が指定されていない場合はエラーになるようにしました。(#54)
+
+	* 環境変数の説明を Environment.md に独立させました。(#54)
+
 2024-08-27  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
 	* rabbimq の cluster_partition_handling 設定を pause_minority に更新しました。(#50)

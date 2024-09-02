@@ -1,7 +1,7 @@
 services:
   fluentd:
     image: kompira.azurecr.io/fluentd-with-rewrite-plugin:latest
-    hostname: fl-${HOSTNAME}
+    hostname: fl-${HOSTNAME:?HOSTNAME must be set}
     environment:
       TZ: ${TZ:-Asia/Tokyo}
     configs:
