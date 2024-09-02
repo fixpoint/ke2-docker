@@ -23,6 +23,7 @@ services:
     <<: *kompira-common-settings
     environment:
       <<: *kompira-common-environ
+      MAX_EXECUTOR_NUM: ${MAX_EXECUTOR_NUM:-0}
       LOGGING_NAME: kengine
       LOGGING_STREAM: ${KENGINE_LOGGING_STREAM:-${LOGGING_STREAM:-true}}
       LOGGING_LEVEL: ${KENGINE_LOGGING_LEVEL:-${LOGGING_LEVEL:-INFO}}
