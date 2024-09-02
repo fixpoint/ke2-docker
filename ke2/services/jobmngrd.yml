@@ -1,7 +1,7 @@
 services:
   jobmngrd:
     image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-latest}
-    hostname: jm-${HOSTNAME}
+    hostname: jm-${HOSTNAME:?HOSTNAME must be set}
     init: true
     environment:
       AMQP_URL: ${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}

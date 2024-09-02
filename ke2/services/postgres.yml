@@ -2,7 +2,7 @@ services:
   postgres:
     # MEMO: potgrsql のメジャーバージョンを変更するときは PGDATA 領域のボリューム名も変更すること
     image: registry.hub.docker.com/library/postgres:16.3-alpine
-    hostname: db-${HOSTNAME}
+    hostname: db-${HOSTNAME:?HOSTNAME must be set}
     environment:
       POSTGRES_PASSWORD: kompira
       POSTGRES_USER: kompira
