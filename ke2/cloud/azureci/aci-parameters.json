@@ -1,0 +1,24 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+    "imageTag":{
+        "value": "latest"
+    },
+    "timezone":{
+        "value":"Asia/Tokyo"
+      },
+      "dnsNameLabel":{
+        "value":""
+      },
+      "databaseUrl": {
+        "value": "<database-url>"
+      },
+      "storageAccountName": {
+        "value": "<storage-account-name>"
+      },
+      "storageAccountKey": {
+        "value": "<storage-account-key>"
+      }
+    }
+  }
