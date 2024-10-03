@@ -56,9 +56,9 @@ PostgreSQL のインストールについては準備する環境に合わせて
 **(2) PostgreSQL サーバの接続設定**
 
 ローカルホスト以外からも PostgreSQL サーバに接続できるように設定します。
-postgresql.conf (RHEL系標準パッケージをインストールした場合は /var/lib/pgsql/data/postgresql.conf) の listen_address を以下のように設定してください。
+postgresql.conf (RHEL系標準パッケージをインストールした場合は /var/lib/pgsql/data/postgresql.conf) の listen_addresses を以下のように設定してください。
 
-    listen_address = '*'
+    listen_addresses = '*'
 
 **(3) PostgreSQL のクライアント認証の設定**
 
