@@ -6,15 +6,17 @@
 
 デプロイ作業を行うために、以下の準備をしてください。
 
-1. Azure CLI のインストール
-  以下のリンクを参考に、お使いの OS に Azure CLI をインストールします。
+1. Azure CLI のインストール:  
+  [Azure CLI インストールガイド](https://learn.microsoft.com/ja-jp/cli/azure/install-azure-cli) を参考に、お使いの OS に Azure CLI をインストールします。
+  
 
-  [Azure CLI インストールガイド](https://learn.microsoft.com/ja-jp/cli/azure/install-azure-cli)
+2. ke2-docker リポジトリのファイル一式を取得:  
+  https://github.com/fixpoint/ke2-docker から、Code -> Download ZIP を選択し、
+  ke2-docker リポジトリのファイル一式を取得して、作業用 PC の適当なディレクトリに展開します。
 
-2. ke2-docker リポジトリのファイル一式を取得
-   https://github.com/fixpoint/ke2-docker から、Code -> Download ZIP を選択し、
-   ke-docker リポジトリのファイル一式を取得して、作業用 PC の適当なディレクトリに
-   展開します。
+3. Docker のインストール (オプショナル):  
+  SSL (self-signed) 証明書の生成を行なうために Docker 必要です。 
+  [Docker インストールガイド](https://docs.docker.com/engine/install/) を参考に、お使いの OS に Docker をインストールします。
 
 ## デプロイ手順
 
@@ -125,6 +127,16 @@ az storage share-rm create \
 
 #### 証明書ファイルのアップロード手順
 
+SSL (self-signed) 証明書の生成を行なうために、以下のコマンドを実行します。
+
+```
+$ cd ke2/cloud/azureci
+$ ../../../scripts/create-cert.sh
+```
+作成された SSL 証明書は ssl ディレクトリに保存されます。
+
+※ 本番環境では、証明書認証局（CA）から証明書を取得してください。
+
 作成した ssl-cert 共有ボリュームに以下のコマンドを使用して証明書ファイルをアップロードします。
 
 ```
@@ -145,7 +157,7 @@ Azure ポータルにログインして、ke20storage ストレージアカウ�
 
 Nginx の conf ファイルを kompira-nginx-conf ボリュームに default.conf という名称でアップロードします。
 
-Azure CLI の以下のコマンドで ke-docker に含まれる Nginx の conf ファイルをアップロードします。
+Azure CLI の以下のコマンドで ke2-docker に含まれる Nginx の conf ファイルをアップロードします。
 
 ```
 cd .\ke2-docker
