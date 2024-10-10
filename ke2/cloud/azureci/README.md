@@ -15,7 +15,7 @@
   ke2-docker リポジトリのファイル一式を取得して、作業用 PC の適当なディレクトリに展開します。
 
 3. Docker のインストール (オプショナル):  
-  SSL (self-signed) 証明書の生成を行なうために Docker 必要です。 
+  SSL (self-signed) 証明書の生成を行なうためには Docker が必要です。 
   [Docker インストールガイド](https://docs.docker.com/engine/install/) を参考に、お使いの OS に Docker をインストールします。
 
 ## デプロイ手順
