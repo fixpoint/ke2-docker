@@ -8,7 +8,7 @@
 |-----------------------|-----------------------------------------------------|----------------------------|
 | `HOSTNAME`            | (下記参照)                                          | ホスト名                   |
 | `KOMPIRA_IMAGE_NAME`  | "kompira.azurecr.io/kompira-enterprise"             | Kompira イメージ           |
-| `KOMPIRA_IMAGE_TAG`   | "latest"                                            | Kompira タグ               |
+| `KOMPIRA_IMAGE_TAG`   | (下記参照)                                          | Kompira タグ               |
 | `DATABASE_URL`        | "pgsql://kompira@//var/run/postgresql/kompira"      | データベースの接続先       |
 | `AMQP_URL`            | "amqp://guest:guest@localhost:5672"                 | メッセージキューの接続先   |
 | `CACHE_URL`           | "redis://localhost:6379"                            | キャッシュの接続先         |
@@ -29,6 +29,8 @@
 
 デプロイする Kompira コンテナのイメージとタグを指定します。
 独自に用意したコンテナイメージや、特定のバージョンのコンテナイメージを利用したい場合にこの環境変数で指定することができます。
+
+KOMPIRA_IMAGE_TAG のデフォルト値は ke2-docker 更新時点で公開されていた最新の kompira コンテナイメージを示しています（例えば "2.0.2" など）。KOMPIRA_IMAGE_TAG に "latest" と指定すると、デプロイ時に公開されている最新の kompira コンテナイメージを利用することができます。
 
 ## DATABASE_URL / AMQP_URL / CACHE_URL
 
