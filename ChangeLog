@@ -1,3 +1,27 @@
+2024-10-16  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* KOMPIRA_IMAGE_TAG のデフォルト値はその時点で公開されている最新イメージのタグとなるようにしました。(#58)
+
+2024-09-02  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* ログ設定 (LOGGING_XXX, AUDIT_LOGGING_XXX) を環境変数で指定できるようにしました。(#54)
+
+	* 最大エグゼキュータ数 (MAX_EXECUTOR_NUM) を環境変数で指定できるようにしました。(#54)
+
+	* 環境変数 HOSTNAME が指定されていない場合はエラーになるようにしました。(#54)
+
+	* 環境変数の説明を Environment.md に独立させました。(#54)
+
+2024-08-27  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* rabbimq の cluster_partition_handling 設定を pause_minority に更新しました。(#50)
+
+2024-08-20  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* 環境変数 ${KOMPIRA_HOST}, ${KOMPIRA_PORT} で nginx の upstream django サーバを指定できるようにしました。(#44)
+
+	* docker-compose-plugin について v2.24.6 以上が必要であることを追記しました。(#41)
+
 2024-08-01  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* 外部 jobmngrd 構成 (ke2/extra/jobmngrd) を追加しました。

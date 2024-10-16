@@ -1,12 +1,16 @@
 services:
   nginx:
     image: registry.hub.docker.com/library/nginx:1.27-alpine
-    hostname: nx-${HOSTNAME}
+    hostname: nx-${HOSTNAME:?HOSTNAME must be set}
     environment:
       - TZ=${TZ:-Asia/Tokyo}
+      - NGINX_ENVSUBST_FILTER=^KOMPIRA
+      - KOMPIRA_HOST=${KOMPIRA_HOST:-kompira}
+      - KOMPIRA_PORT=${KOMPIRA_PORT:-8000}
     configs:
+      # MEMO: /etc/nginx/templates/*.template は起動時に環境変数が展開されて /etc/nginx/conf.d/* に書き出される
       - source: nginx-config
-        target: /etc/nginx/conf.d/default.conf
+        target: /etc/nginx/templates/default.conf.template
     volumes:
       - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
       - ${KOMPIRA_SSL_DIR:-../../ssl}:/etc/nginx/ssl:ro
