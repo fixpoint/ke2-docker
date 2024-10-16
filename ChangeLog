@@ -1,3 +1,7 @@
+2024-10-16  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* KOMPIRA_IMAGE_TAG のデフォルト値はその時点で公開されている最新イメージのタグとなるようにしました。(#58)
+
 2024-09-02  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* ログ設定 (LOGGING_XXX, AUDIT_LOGGING_XXX) を環境変数で指定できるようにしました。(#54)
