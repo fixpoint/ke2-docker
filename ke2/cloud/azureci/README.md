@@ -229,7 +229,7 @@ az deployment group create \
 
 オーバーライドできるパラメータは以下のとおりです。
 
-- imageTag: イメージのタグ（デフォルト: "latest"）
+- imageTag: イメージのタグ（デフォルト:  ke2-docker 更新時点で公開されていた最新の kompira コンテナイメージのタグ。例えば "2.0.2" など）
 - timezone: タイムゾーン（デフォルト: "Asia/Tokyo"）
 - dnsNameLabel: DNS 名ラベル（デフォルト: 空）。
   DNS 名ラベルを追加する場合、`<dnsNameLabel>`.japaneast.azurecontainer.io にブラウザからアクセスできます。

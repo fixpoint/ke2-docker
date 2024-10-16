@@ -3,7 +3,7 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
     "imageTag":{
-        "value": "latest"
+        "value": "2.0.2"
     },
     "timezone":{
         "value":"Asia/Tokyo"
