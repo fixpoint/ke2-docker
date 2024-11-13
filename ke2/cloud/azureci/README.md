@@ -236,7 +236,7 @@ az deployment group create \
   DNS 名ラベルを追加する場合、`<dnsNameLabel>`.japaneast.azurecontainer.io にブラウザからアクセスできます。
 - databaseUrl: データベースの接続 URL 
   形式：pgsql://<ユーザ名>:<パスワード>@<アドレス>:<ポート番号>/<データベース名>
-- storageAccountName: ストレージアカウント名
+- storageAccountName: ストレージアカウント名(デフォルト: ke20storage)
 - storageAccountKey: ストレージアカウントキー
 
 #### コンテナログの確認

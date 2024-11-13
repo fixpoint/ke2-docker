@@ -18,7 +18,7 @@
         "value": "<database-url>"
       },
       "storageAccountName": {
-        "value": "<storage-account-name>"
+        "value": "ke20storage"
       },
       "storageAccountKey": {
         "value": "<storage-account-key>"
