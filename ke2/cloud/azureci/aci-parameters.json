@@ -8,6 +8,9 @@
     "timezone":{
         "value":"Asia/Tokyo"
       },
+      "maxExecutor":{
+        "value": 2
+      },
       "dnsNameLabel":{
         "value":""
       },

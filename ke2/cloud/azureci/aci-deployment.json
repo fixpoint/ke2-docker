@@ -56,7 +56,8 @@
                 { "name": "DATABASE_URL", "value": "[parameters('databaseUrl')]" },
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
                 { "name": "CACHE_URL", "value": "redis://localhost:6379" },
-                { "name": "TZ", "value": "[parameters('timezone')]" }
+                { "name": "TZ", "value": "[parameters('timezone')]" },
+                { "name": "MAX_EXECUTOR_NUM", "value": "[parameters('maxExecutor')]"}
               ],
               "volumeMounts": [
                 {
@@ -251,6 +252,9 @@
     },
     "timezone":{
       "type": "string"
+    },
+    "maxExecutor":{
+      "type": "int"
     },
     "dnsNameLabel":{
       "type":"string"
