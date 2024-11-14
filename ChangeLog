@@ -1,3 +1,7 @@
+2024-11-14  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* ACI: 最大エグゼキュータ数 (MAX_EXECUTOR_NUM) をパラメーター変数 (maxExecutor) で指定できるようにしました。(#62)
+
 2024-10-16  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* KOMPIRA_IMAGE_TAG のデフォルト値はその時点で公開されている最新イメージのタグとなるようにしました。(#58)

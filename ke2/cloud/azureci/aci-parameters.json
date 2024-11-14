@@ -8,6 +8,9 @@
     "timezone":{
         "value":"Asia/Tokyo"
       },
+      "maxExecutor":{
+        "value": 2
+      },
       "dnsNameLabel":{
         "value":""
       },
@@ -15,7 +18,7 @@
         "value": "<database-url>"
       },
       "storageAccountName": {
-        "value": "<storage-account-name>"
+        "value": "ke20storage"
       },
       "storageAccountKey": {
         "value": "<storage-account-key>"
