@@ -1,3 +1,7 @@
+2024-11-28  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* nginxの公開ポートモードを環境変数で設定可能にしました。(#56)
+
 2024-11-14  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
 	* ACI: 最大エグゼキュータ数 (MAX_EXECUTOR_NUM) をパラメーター変数 (maxExecutor) で指定できるようにしました。(#62)
