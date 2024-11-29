@@ -1,3 +1,7 @@
+2024-11-29  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* アイドル時の接続切断を防止するため、KompiraおよびKengineコンテナにて net.ipv4.tcp_keepalive_time を1800に設定しました。(#57)
+
 2024-11-28  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
 	* nginxの公開ポートモードを環境変数で設定可能にしました。(#56)
