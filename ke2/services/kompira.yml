@@ -9,6 +9,8 @@ x-kompira-common-settings:
     - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
   extra_hosts:
     - host.docker.internal:host-gateway
+  sysctls:
+      net.ipv4.tcp_keepalive_time: 1800
 
 x-kompira-common-environ:
   &kompira-common-environ
