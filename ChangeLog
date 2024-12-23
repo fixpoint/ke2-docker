@@ -1,3 +1,8 @@
+2024-12-16  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* [nginx] client request header size の設定値を 2*32KB に変更しました。(#61)
+	* [uwsgi] request header size の設定値を 64KB に変更しました。(#61)
+
 2024-11-29  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
 	* アイドル時の接続切断を防止するため、KompiraおよびKengineコンテナにて net.ipv4.tcp_keepalive_time を1800に設定しました。(#57)
