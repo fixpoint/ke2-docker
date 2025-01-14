@@ -7,6 +7,7 @@ x-kompira-common-settings:
   volumes:
     - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
     - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
+    - ${KOMPIRA_SSL_DIR:-../../ssl}:/opt/kompira/ssl:ro
   extra_hosts:
     - host.docker.internal:host-gateway
   sysctls:
