@@ -20,6 +20,7 @@ x-kompira-common-environ:
   CACHE_URL: ${CACHE_URL:-redis://redis:6379}
   LANGUAGE_CODE: ${LANGUAGE_CODE:-ja}
   TZ: ${TZ:-Asia/Tokyo}
+  REQUESTS_CA_BUNDLE: ${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
 
 services:
   kengine:
