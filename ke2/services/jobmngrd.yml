@@ -15,6 +15,7 @@ services:
       LOGGING_BACKUP: ${JOBMNGRD_LOGGING_BACKUP:-${LOGGING_BACKUP:-7}}
       LOGGING_WHEN: ${JOBMNGRD_LOGGING_WHEN:-${LOGGING_WHEN:-MIDNIGHT}}
       LOGGING_INTERVAL: ${JOBMNGRD_LOGGING_INTERVAL:-${LOGGING_INTERVAL:-1}}
+      REQUESTS_CA_BUNDLE: ${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
     configs:
       - source: kompira-config
         target: /opt/kompira/kompira.conf
