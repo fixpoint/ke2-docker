@@ -1,3 +1,7 @@
+2025-01-21  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* HTTP レスポンスヘッダの Server: にサーバのバージョン情報が載らないようにしました。(#71)
+
 2025-01-17  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* jobmngrdコンテナに環境変数 DATABASE_URL, CACHE_URL を渡せるようにしました。(#68)
