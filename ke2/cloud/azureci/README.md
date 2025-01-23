@@ -268,7 +268,7 @@ az container exec --resource-group KE20RG --name azureci --container-name <コ�
 
 以下でコンテナを削除します。
 ```
-az deployment group delete --resource-group KE20RG --name azureci
+az container delete --resource-group KE20RG --name azureci --yes
 ```
 
 コンテナを削除ではなく停止・起動・再起動したい場合は、以下のコマンドも利用できます。
