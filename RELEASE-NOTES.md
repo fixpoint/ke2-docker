@@ -1,6 +1,22 @@
 # ke2-docker リリースノート
 
 ---
+## 2025/01/24 (2.0.2.post1)
+### コンテナイメージ
+- KOMPIRA_IMAGE_TAG を 2.0.2.post1 に更新しました。
+
+### 追加
+- nginx の公開ポートモードを環境変数 NGINX_PORT_MODE で設定できるようにしました。
+- jobmngrd コンテナに環境変数 DATABASE_URL, CACHE_URL を渡せるようにしました。
+- [ACI] 最大エグゼキュータ数 (MAX_EXECUTOR_NUM) をパラメーター変数 (maxExecutor) で指定できるようにしました。
+
+### 変更
+- HTTP レスポンスヘッダの Server: にサーバのバージョン情報が載らないようにしました。
+- [nginx] client request header size の設定値を 2*32KB に変更しました。
+- [uwsgi] request header size の設定値を 64KB に変更しました。
+- kompira および kengine コンテナにおいて net.ipv4.tcp_keepalive_time を 1800 に設定しました。
+
+---
 ## 2024/10/16 (2.0.2)
 ### コンテナイメージ
 - KOMPIRA_IMAGE_TAG を 2.0.2 に更新しました。
