@@ -1,3 +1,28 @@
+2025-01-21  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* HTTP レスポンスヘッダの Server: にサーバのバージョン情報が載らないようにしました。(#71)
+
+2025-01-17  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* jobmngrdコンテナに環境変数 DATABASE_URL, CACHE_URL を渡せるようにしました。(#68)
+
+2024-12-16  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* [nginx] client request header size の設定値を 2*32KB に変更しました。(#61)
+	* [uwsgi] request header size の設定値を 64KB に変更しました。(#61)
+
+2024-11-29  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* アイドル時の接続切断を防止するため、KompiraおよびKengineコンテナにて net.ipv4.tcp_keepalive_time を1800に設定しました。(#57)
+
+2024-11-28  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* nginxの公開ポートモードを環境変数で設定可能にしました。(#56)
+
+2024-11-14  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* ACI: 最大エグゼキュータ数 (MAX_EXECUTOR_NUM) をパラメーター変数 (maxExecutor) で指定できるようにしました。(#62)
+
 2024-10-16  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* KOMPIRA_IMAGE_TAG のデフォルト値はその時点で公開されている最新イメージのタグとなるようにしました。(#58)

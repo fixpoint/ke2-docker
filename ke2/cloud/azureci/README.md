@@ -231,11 +231,12 @@ az deployment group create \
 
 - imageTag: イメージのタグ（デフォルト:  ke2-docker 更新時点で公開されていた最新の kompira コンテナイメージのタグ。例えば "2.0.2" など）
 - timezone: タイムゾーン（デフォルト: "Asia/Tokyo"）
+- maxExecutor: 最大エグゼキュター数（デフォルト: 2）
 - dnsNameLabel: DNS 名ラベル（デフォルト: 空）。
   DNS 名ラベルを追加する場合、`<dnsNameLabel>`.japaneast.azurecontainer.io にブラウザからアクセスできます。
 - databaseUrl: データベースの接続 URL 
   形式：pgsql://<ユーザ名>:<パスワード>@<アドレス>:<ポート番号>/<データベース名>
-- storageAccountName: ストレージアカウント名
+- storageAccountName: ストレージアカウント名(デフォルト: ke20storage)
 - storageAccountKey: ストレージアカウントキー
 
 #### コンテナログの確認
@@ -267,7 +268,7 @@ az container exec --resource-group KE20RG --name azureci --container-name <コ�
 
 以下でコンテナを削除します。
 ```
-az deployment group delete --resource-group KE20RG --name azureci
+az container delete --resource-group KE20RG --name azureci --yes
 ```
 
 コンテナを削除ではなく停止・起動・再起動したい場合は、以下のコマンドも利用できます。

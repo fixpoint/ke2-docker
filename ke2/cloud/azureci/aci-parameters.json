@@ -3,10 +3,13 @@
     "contentVersion": "1.0.0.0",
     "parameters": {
     "imageTag":{
-        "value": "2.0.2"
+        "value": "2.0.2.post1"
     },
     "timezone":{
         "value":"Asia/Tokyo"
+      },
+      "maxExecutor":{
+        "value": 2
       },
       "dnsNameLabel":{
         "value":""
@@ -15,7 +18,7 @@
         "value": "<database-url>"
       },
       "storageAccountName": {
-        "value": "<storage-account-name>"
+        "value": "ke20storage"
       },
       "storageAccountKey": {
         "value": "<storage-account-key>"

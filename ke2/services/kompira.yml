@@ -1,6 +1,6 @@
 x-kompira-common-settings:
   &kompira-common-settings
-  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.2}
+  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.2.post1}
   configs:
     - source: kompira-audit
       target: /opt/kompira/kompira_audit.yaml
@@ -9,6 +9,8 @@ x-kompira-common-settings:
     - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
   extra_hosts:
     - host.docker.internal:host-gateway
+  sysctls:
+      net.ipv4.tcp_keepalive_time: 1800
 
 x-kompira-common-environ:
   &kompira-common-environ
@@ -58,6 +60,7 @@ services:
       AUDIT_LOGGING_BACKUP: ${KOMPIRA_AUDIT_LOGGING_BACKUP:-${AUDIT_LOGGING_BACKUP:-365}}
       AUDIT_LOGGING_WHEN: ${KOMPIRA_AUDIT_LOGGING_WHEN:-${AUDIT_LOGGING_WHEN:-MIDNIGHT}}
       AUDIT_LOGGING_INTERVAL: ${KOMPIRA_AUDIT_LOGGING_INTERVAL:-${AUDIT_LOGGING_INTERVAL:-1}}
+      UWSGI_BUFFER_SIZE: 65536
     hostname: ap-${HOSTNAME:?HOSTNAME must be set}
     init: true
     command: ["uwsgi"]
