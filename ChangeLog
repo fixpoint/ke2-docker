@@ -1,5 +1,6 @@
 2025-03-25  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
+	* ACI にも ngninx の共通設定を利用できるにしました。(#75)
 	* nginx のディレクティブをグローバル設定に移動しました。(#67)
 
 2025-01-21  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
