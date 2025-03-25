@@ -1,3 +1,7 @@
+2025-03-25  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* nginx のディレクティブをグローバル設定に移動しました。(#67)
+
 2025-01-21  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* HTTP レスポンスヘッダの Server: にサーバのバージョン情報が載らないようにしました。(#71)
