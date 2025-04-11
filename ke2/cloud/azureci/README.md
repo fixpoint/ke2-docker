@@ -161,7 +161,7 @@ Azure CLI の以下のコマンドで ke2-docker に含まれる Nginx の conf 
 
 ```
 cd .\ke2-docker
-az storage file upload --account-name ke20storage -s kompira-nginx-conf --source ./configs/nginx-azure.conf -p default.conf
+az storage file upload --account-name ke20storage -s kompira-nginx-conf --source ./configs/nginx.conf -p default.conf.template
 ```
 
 Azure ポータルにログインして、ke20storage ストレージアカウントのファイル共有 kompira-nginx-conf に移動し、

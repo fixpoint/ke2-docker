@@ -27,6 +27,7 @@
                 { "name": "DATABASE_URL", "value": "[parameters('databaseUrl')]" },
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
                 { "name": "CACHE_URL", "value": "redis://localhost:6379" },
+                { "name": "UWSGI_BUFFER_SIZE", "value": 65536 },
                 { "name": "TZ", "value": "[parameters('timezone')]" }
               ],
               "volumeMounts": [
@@ -156,6 +157,10 @@
                   "memoryInGB": 16
                 }
               },
+              "environmentVariables": [
+                { "name": "KOMPIRA_HOST", "value": "localhost" },
+                { "name": "KOMPIRA_PORT", "value": 8000 }
+              ],
               "volumeMounts": [
                 {
                   "name": "kompira-var",
@@ -163,7 +168,7 @@
                 },
                 {
                   "name": "kompira-nginx-conf",
-                  "mountPath": "/etc/nginx/conf.d"
+                  "mountPath": "/etc/nginx/templates"
                 },
                 {
                   "name": "ssl-cert",

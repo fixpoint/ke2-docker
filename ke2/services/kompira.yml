@@ -1,6 +1,6 @@
 x-kompira-common-settings:
   &kompira-common-settings
-  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.2.post1}
+  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.3}
   configs:
     - source: kompira-audit
       target: /opt/kompira/kompira_audit.yaml
