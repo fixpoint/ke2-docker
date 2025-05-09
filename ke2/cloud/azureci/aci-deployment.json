@@ -34,6 +34,10 @@
                 {
                   "name": "kompira-var",
                   "mountPath": "/var/opt/kompira"
+                },
+                {
+                  "name": "audit-log",
+                  "mountPath": "/var/log/kompira"
                 }
               ],
               "command": ["docker-entrypoint.sh", "uwsgi"]
@@ -218,6 +222,15 @@
               "shareName": "rabbitmq-conf",
               "storageAccountName": "[parameters('storageAccountName')]",
               "storageAccountKey": "[parameters('storageAccountKey')]"
+            }
+          },
+          {
+            "name": "audit-log",
+            "azureFile": {
+              "shareName": "audit-log",
+              "storageAccountName": "[parameters('storageAccountName')]",
+              "storageAccountKey": "[parameters('storageAccountKey')]",
+              "readOnly": false
             }
           }
         ],
