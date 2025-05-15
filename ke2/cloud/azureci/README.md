@@ -96,6 +96,7 @@ Azure Container Instances で必要となる共有ファイルボリュームを
 - kompira-nginx-conf: nginx の conf ファイル用
 - rabbitmq-conf: RabbitMQ 設定ファイル用
 - ssl-cert: SSL・CA 証明書用
+- ke2-file-log: ke2 のファイルログ用
 
 ※ ファイル共有名に使用できるのは、小文字、数字、ハイフンのみです。
    ファイル共有名の先頭と末尾にはアルファベットまたは数字を使用する必要があります。
@@ -123,6 +124,11 @@ az storage share-rm create \
   --resource-group KE20RG \
   --storage-account ke20storage \
   --name ssl-cert
+
+az storage share-rm create \
+  --resource-group KE20RG \
+  --storage-account ke20storage \
+  --name ke2-file-log
 ```
 
 #### 証明書ファイルのアップロード手順
@@ -183,6 +189,45 @@ az storage file upload --account-name ke20storage -s rabbitmq-conf --source ./co
 Azure ポータルにログインして、ke20storage ストレージアカウントのファイル共有 kompira-nginx-conf に移動し、
 画面上からアップロードすることも可能です。
 
+#### Log Analytics ワークスペースの作成 (オプショナル)
+一般的に、KE2 コンテナーが実行中の場合、コンソールログは Azure ポータルまたは Azure CLI からアクセス可能です。しかし、Azure 上で KE2 を再起動または再デプロイすると、以前のコンソールログは削除されます。そのため、コンソールログを保持したい場合は、Azure Log Analytics ワークスペースにログを保存する必要があります。
+
+※ Azure Log Analytics ワークスペースの使用は必須ではありませんが、本番環境ではデバッグ目的での使用が推奨されます。
+
+すでに Azure Log Analytics ワークスペースがある場合は、新しく作成せずにそれを使用できます。以下のコマンドを使用して Azure Log Analytics ワークスペースを作成します。
+
+```bash
+az monitor log-analytics workspace create \
+  --resource-group KE20RG \
+  --workspace-name ke2-azure-ci-log-space
+```
+
+Azure Log Analytics ワークスペースにログを出力したい場合、KE2 をデプロイする際に ワークスペース ID と 主キー を渡す必要があります。以下のコマンドで必要な情報を取得してください。
+
+ワークスペース IDを習得:
+
+```bash
+az monitor log-analytics workspace show \
+  --resource-group KE20RG \
+  --workspace-name ke2-azure-ci-log-space \
+  --query customerId \
+  --output tsv
+```
+
+主キー を習得(primarySharedKey):
+```bash
+az monitor log-analytics workspace get-shared-keys \
+  --resource-group KE20RG \
+  --workspace-name ke2-azure-ci-log-space
+
+# output:
+#{
+#  "primarySharedKey": "*******",
+#  "secondarySharedKey": "********"
+#}
+```
+
+[Log Analytics ワークスペースの概要](https://learn.microsoft.com/ja-jp/azure/azure-monitor/logs/log-analytics-workspace-overview#view-log-analytics-workspace-insights)をご参照ください。
 
 ### アプリケーションを ACI にデプロイ
 
@@ -237,9 +282,12 @@ az deployment group create \
 - databaseUrl: データベースの接続 URL 
   形式：pgsql://<ユーザ名>:<パスワード>@<アドレス>:<ポート番号>/<データベース名>
 - storageAccountName: ストレージアカウント名(デフォルト: ke20storage)
-- storageAccountKey: ストレージアカウントキー
+- storageAccountKey: 取得したストレージアカウントキー
+- enableLogAnalytics: KE2コンソールログをAzure Log Analytics ワークスペースに送信するかどうかを制御するために使用されます。(デフォルト: false)
+- logAnalyticsWorkspaceId: 取得した Azure Log Analytics ワークスペース ID。enableLogAnalytics が true の場合、この値を指定してください(デフォルト: 空)
+- logAnalyticsKey: 取得した Azure Log Analyticsの主キー(primarySharedKey)。enableLogAnalytics が true の場合、この値を指定してください(デフォルト: 空)
 
-#### コンテナログの確認
+#### 実行中コンテナログの確認
 
 特定のコンテナのログを確認するには、以下のコマンドを実行します。
 
@@ -255,6 +303,84 @@ az deployment group create \
 ```
 az container logs --resource-group KE20RG --name azureci --container-name <コンテナ名>
 ```
+
+以下のコマンドでもログをダウンロードできます。
+```bash
+az container logs --resource-group KE20RG --name azureci --container-name <コンテナ名> --output table > <コンテナ名>.log
+```
+
+#### Log Analytics によるコンテナログの確認
+
+Log Analytics からログを収集するために Log Analytics ワークスペース ID が必要です。そのため、事前にワークスペース ID を取得しておいてください。
+
+最後の数行ログを取得:
+```bash
+# 以下のコマンド実行前 <logAnalyticsWorkspaceId>、<コンテナ名>、<lines> を実際の値に置き換えてください。
+az monitor log-analytics query \
+  --workspace <logAnalyticsWorkspaceId> \
+  --analytics-query "
+    ContainerInstanceLog_CL
+    | where ContainerName_s == '<コンテナ名>'
+    | sort by TimeGenerated desc
+    | take <lines>
+  " \
+  --output table > <コンテナ名>.log
+```
+
+特定の時間範囲でフィルター:
+```bash
+# 以下のコマンド実行前 <logAnalyticsWorkspaceId>、<コンテナ名>、datetime() を実際の値に置き換えてください。
+az monitor log-analytics query \
+  --workspace <logAnalyticsWorkspaceId> \
+  --analytics-query "
+    ContainerInstanceLog_CL
+    | where ContainerName_s == '<コンテナ名>'
+    | where TimeGenerated between (datetime(2024-12-01T00:00:00Z) .. datetime(2024-12-01T12:00:00Z))
+    | sort by TimeGenerated desc
+  " \
+  --output table > <コンテナ名>.log
+```
+
+直近数時間のログ収集:
+```bash
+# 以下のコマンド実行前 <logAnalyticsWorkspaceId>、<コンテナ名>、<hours> を実際の値に置き換えてください。
+# <hours>: 1h, 2h, 3h, ...24h etc.
+az monitor log-analytics query \
+  --workspace <logAnalyticsWorkspaceId> \
+  --analytics-query "
+    ContainerInstanceLog_CL
+    | where ContainerName_s == '<コンテナ名>'
+    | where TimeGenerated > ago(<hours>)
+    | sort by TimeGenerated desc
+  " \
+  --output table > <コンテナ名>.log
+```
+
+
+Azure portal で [Log analytics のログの表示](https://learn.microsoft.com/ja-jp/azure/container-instances/container-instances-log-analytics#view-logs)をご参照ください。
+
+
+#### KE2 のファイルログ(audit や process やkompira_sendevtなど) の確認
+
+以下のコマンドを使用して、Azure ファイル共有 `ke2-file-log` からログファイルをダウンロードしてください。
+
+注意: コマンド実行前 <storageAccountName>、<storageAccountKey>、<保存先のローカルフォルダ> を実際の値に置き換えてください。
+
+```bash
+for f in $(az storage file list \
+--account-name <storageAccountName> \
+--account-key <storageAccountKey> \
+--share-name ke2-file-log \
+--query "[?properties.contentLength!=null].name" -o tsv); \
+do az storage file download \
+--account-name <storageAccountName> \
+--account-key <storageAccountKey>; \
+--share-name ke2-file-log \
+--path "$f" --dest "<保存先のローカルフォルダ>/$f" \
+done
+```
+
+Azure ファイル共有 `ke2-file-log` のログファイルは、Azure ポータルから直接ダウンロードすることもできます。 
 
 #### コンテナへのシェルアクセス
 
