@@ -8,6 +8,7 @@
       "name": "azureci",
       "location": "Japan East",
       "properties": {
+      "diagnostics": "[if(and(not(empty(parameters('logAnalyticsWorkspaceId'))), not(empty(parameters('logAnalyticsKey')))), json(concat('{\"logAnalytics\":{\"workspaceId\":\"', parameters('logAnalyticsWorkspaceId'), '\",\"workspaceKey\":\"', parameters('logAnalyticsKey'), '\",\"logType\":\"ContainerInsights\"}}')), json('{}'))]",
         "containers": [
           {
             "name": "kompira",
@@ -28,12 +29,17 @@
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
                 { "name": "CACHE_URL", "value": "redis://localhost:6379" },
                 { "name": "UWSGI_BUFFER_SIZE", "value": 65536 },
-                { "name": "TZ", "value": "[parameters('timezone')]" }
+                { "name": "TZ", "value": "[parameters('timezone')]" },
+                { "name": "HOSTNAME_SHORT", "value": "kompira" }
               ],
               "volumeMounts": [
                 {
                   "name": "kompira-var",
                   "mountPath": "/var/opt/kompira"
+                },
+                {
+                  "name": "kompira-log",
+                  "mountPath": "/var/log/kompira"
                 }
               ],
               "command": ["docker-entrypoint.sh", "uwsgi"]
@@ -58,12 +64,17 @@
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
                 { "name": "CACHE_URL", "value": "redis://localhost:6379" },
                 { "name": "TZ", "value": "[parameters('timezone')]" },
-                { "name": "MAX_EXECUTOR_NUM", "value": "[parameters('maxExecutor')]"}
+                { "name": "MAX_EXECUTOR_NUM", "value": "[parameters('maxExecutor')]"},
+                { "name": "HOSTNAME_SHORT", "value": "kengine" }
               ],
               "volumeMounts": [
                 {
                   "name": "kompira-var",
                   "mountPath": "/var/opt/kompira"
+                },
+                {
+                  "name": "kompira-log",
+                  "mountPath": "/var/log/kompira"
                 }
               ],
               "command": ["docker-entrypoint.sh", "kompirad"]
@@ -85,12 +96,17 @@
               },
               "environmentVariables": [
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
-                { "name": "TZ", "value": "[parameters('timezone')]" }
+                { "name": "TZ", "value": "[parameters('timezone')]" },
+                { "name": "HOSTNAME_SHORT", "value": "jobmngrd" }
               ],
               "volumeMounts": [
                 {
                   "name": "kompira-var",
                   "mountPath": "/var/opt/kompira"
+                },
+                {
+                  "name": "kompira-log",
+                  "mountPath": "/var/log/kompira"
                 }
               ],
               "command": ["docker-entrypoint.sh", "jobmngrd"]
@@ -219,6 +235,15 @@
               "storageAccountName": "[parameters('storageAccountName')]",
               "storageAccountKey": "[parameters('storageAccountKey')]"
             }
+          },
+          {
+            "name": "kompira-log",
+            "azureFile": {
+              "shareName": "kompira-log",
+              "storageAccountName": "[parameters('storageAccountName')]",
+              "storageAccountKey": "[parameters('storageAccountKey')]",
+              "readOnly": false
+            }
           }
         ],
         "ipAddress": {
@@ -268,6 +293,12 @@
       "type": "string"
     },
     "storageAccountKey": {
+      "type": "string"
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string"
+    },
+    "logAnalyticsKey": {
       "type": "string"
     }
   }

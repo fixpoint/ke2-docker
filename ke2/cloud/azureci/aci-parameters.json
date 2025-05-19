@@ -1,27 +1,33 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-    "contentVersion": "1.0.0.0",
-    "parameters": {
-    "imageTag":{
-        "value": "2.0.3"
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+  "imageTag":{
+      "value": "2.0.3"
+  },
+  "timezone":{
+      "value":"Asia/Tokyo"
     },
-    "timezone":{
-        "value":"Asia/Tokyo"
-      },
-      "maxExecutor":{
-        "value": 2
-      },
-      "dnsNameLabel":{
-        "value":""
-      },
-      "databaseUrl": {
-        "value": "<database-url>"
-      },
-      "storageAccountName": {
-        "value": "ke20storage"
-      },
-      "storageAccountKey": {
-        "value": "<storage-account-key>"
-      }
+    "maxExecutor":{
+      "value": 2
+    },
+    "dnsNameLabel":{
+      "value":""
+    },
+    "logAnalyticsWorkspaceId": {
+      "value": ""
+    },
+    "logAnalyticsKey": {
+      "value": ""
+    },
+    "databaseUrl": {
+      "value": "<database-url>"
+    },
+    "storageAccountName": {
+      "value": "ke20storage"
+    },
+    "storageAccountKey": {
+      "value": "<storage-account-key>"
     }
   }
+}
