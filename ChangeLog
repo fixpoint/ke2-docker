@@ -1,3 +1,7 @@
+2025-05-23  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* KE2 ACI をサブネット内にデプロイできるようにしました。(#89)
+
 2025-05-19  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
 	* KE2 ACIにおいて、ログ管理のオプションを追加しました。(#83)

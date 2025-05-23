@@ -3,10 +3,36 @@
   "contentVersion": "1.0.0.0",
   "resources": [
     {
+      "condition": "[variables('enableVnetIntegration')]",
+      "type": "Microsoft.Network/networkProfiles",
+      "apiVersion": "2020-11-01",
+      "name": "ke2-np",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "containerNetworkInterfaceConfigurations": [
+          {
+            "name": "ke2-if-conf",
+            "properties": {
+              "ipConfigurations": [
+                {
+                  "name": "ke2-aci-ifipcnf",
+                  "properties": {
+                    "subnet": {
+                      "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "type": "Microsoft.ContainerInstance/containerGroups",
       "apiVersion": "2019-12-01",
       "name": "azureci",
-      "location": "Japan East",
+      "location": "[resourceGroup().location]",
       "properties": {
       "diagnostics": "[if(and(not(empty(parameters('logAnalyticsWorkspaceId'))), not(empty(parameters('logAnalyticsKey')))), json(concat('{\"logAnalytics\":{\"workspaceId\":\"', parameters('logAnalyticsWorkspaceId'), '\",\"workspaceKey\":\"', parameters('logAnalyticsKey'), '\",\"logType\":\"ContainerInsights\"}}')), json('{}'))]",
         "containers": [
@@ -203,6 +229,7 @@
           }
         ],
         "osType": "Linux",
+        "networkProfile": "[if(variables('enableVnetIntegration'), variables('networkProfileObject'), null())]",
         "volumes": [
           {
             "name": "kompira-var",
@@ -247,8 +274,8 @@
           }
         ],
         "ipAddress": {
-          "type": "Public",
-          "dnsNameLabel": "[parameters('dnsNameLabel')]",
+          "type": "[if(variables('enableVnetIntegration'), 'Private', 'Public')]",
+          "dnsNameLabel": "[if(variables('enableVnetIntegration'), null(), parameters('dnsNameLabel'))]",
           "ports": [
             {
               "protocol": "TCP",
@@ -271,7 +298,11 @@
     }
   ],
   "variables": {
-    "keimage": "[concat('kompira.azurecr.io/kompira-enterprise:', parameters('imageTag'))]"
+    "keimage": "[concat('kompira.azurecr.io/kompira-enterprise:', parameters('imageTag'))]",
+    "enableVnetIntegration": "[and(not(empty(parameters('vnetName'))), not(empty(parameters('subnetName'))))]",
+    "networkProfileObject":{
+      "id": "[resourceId('Microsoft.Network/networkProfiles', 'ke2-np')]"
+    }
   },
   "parameters": {
     "databaseUrl": {
@@ -299,6 +330,12 @@
       "type": "string"
     },
     "logAnalyticsKey": {
+      "type": "string"
+    },
+    "vnetName": {
+      "type": "string"
+    },
+    "subnetName": {
       "type": "string"
     }
   }
