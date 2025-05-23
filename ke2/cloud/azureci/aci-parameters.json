@@ -26,6 +26,9 @@
     "logAnalyticsKey": {
       "value": ""
     },
+    "kompiraSharePath": {
+      "value": ""
+    },
     "databaseUrl": {
       "value": "<database-url>"
     },
