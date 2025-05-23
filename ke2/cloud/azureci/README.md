@@ -97,6 +97,7 @@ Azure Container Instances で必要となる共有ファイルボリュームを
 - rabbitmq-conf: RabbitMQ 設定ファイル用
 - ssl-cert: SSL・CA 証明書用
 - kompira-log: kompira のログファイル用
+- kompira-share: kompira コンテナ内の特定のパスにマウント用 (オプショナル)
 
 ※ ファイル共有名に使用できるのは、小文字、数字、ハイフンのみです。
    ファイル共有名の先頭と末尾にはアルファベットまたは数字を使用する必要があります。
@@ -129,6 +130,13 @@ az storage share-rm create \
   --resource-group KE20RG \
   --storage-account ke20storage \
   --name kompira-log
+
+# オプショナル
+# kompira コンテナで (export_dir や import_dir など）のデータ管理を行う予定がある場合は、事前に作成しておいてください。
+az storage share-rm create \
+  --resource-group KE20RG \
+  --storage-account ke20storage \
+  --name kompira-share
 ```
 
 #### 証明書ファイルのアップロード手順
@@ -306,6 +314,12 @@ Azure Log Analytics ワークスペースに対する操作には、「ワーク
 注意: サブネットを作成する際は、サブネットの委任設定として 「Microsoft.ContainerInstance/containerGroups」 を選択する必要があります。
 
 
+多くの場合、コンテナと Azure ポータルまたはローカルマシン間でデータを共有(インポートやエクスポートなどの時)の必要があります。Azure CI はクラウド上でコンテナを実行するため、Azure プラットフォームやローカルマシンとコンテナ間で直接データを共有することは一般的にできません。そのため、Azure File Share を使用してコンテナ内のパスをマウントする必要があります。以下のパラメーターを使用することで、kompira コンテナ内のマウント先パスを指定できます。
+- kompiraSharePath: kompira コンテナ内のマウント先パス(デフォルト: "")。デフォルトでは空("")のでマウントされません。マウントしたい場合、事前に Azure ファイル共有 `kompira-share` を作成し、このパラメーターも指定してください。
+
+  ※ マウントのために、Kompira コンテナ内の任意の既存のディレクトリパスを指定することができます。推奨されるパスは `"/mnt"` です。
+  もし別のディレクトリ例えば `/usr/src`、`/opt/kompira`、`/var/opt/kompira` をマウント先として使用したい場合は、エクスポート・インポートなどの操作を行う時に、マウントディレクトリ内に新しいディレクトリを作成し、そちらに操作実行ほうが安全です。
+
 #### 実行中コンテナログの確認
 
 特定のコンテナのログを確認するには、以下のコマンドを実行します。
@@ -433,7 +447,254 @@ az container start --resource-group KE20RG --name azureci
 az container restart --resource-group KE20RG --name azureci
 ```
 
-#### 料金プラン
+## ローカルマシンでの Azure ファイル共有のマウント手順
+
+Azure ポータルから Azure ファイル共有にアクセスすることもできますが、操作の都合上、ローカルにマウントして使用する方が便利な場合もあります。以下の手順で、Azure ファイル共有をローカルにマウントすることができます。
+
+Linux マシンに `cifs-utils` がインストールされていない場合は、インストールしてください。
+```
+# 例:
+sudo dnf install cifs-utils
+```
+
+以下のコマンドで、Azure ファイル共有をローカル環境にマウントしてください。コマンド実行前 `<storageAccountName>`、`<storageAccountKey>`、`<Azure ファイル共有名>`、`<マウント先のローカルディレクトリ>` を実際の値に置き換えてください。
+
+```
+sudo mount -t cifs //<storageAccountName>.file.core.windows.net/<Azure ファイル共有名> <マウント先のローカルディレクトリ> \
+-o vers=3.0,\
+username=<storageAccountName>,\
+password=<storageAccountKey>,\
+dir_mode=0777,file_mode=0777,serverino
+```
+
+このドキュメントに従って Azure ファイル共有を同じ名前で準備した場合、以下の Azure ファイル共有がすでに作成済みです。
+
+Azure ファイル共有名:
+- kompira-share:
+  オプショナルですがこの Azure ファイル共有は、Kompira コンテナ間でデータを共有することを主な目的としています。たとえば、インポートやエクスポートの操作に利用することができます。KE2 のデプロイ時には、kompira コンテナ内のマウント先パスをパラメーター `<kompiraSharePath>` で指定可能です。`<kompiraSharePath>` に推奨パス以外を指定する場合は、既存のファイルやディレクトリに注意して取り扱ってください。それ以外の場合は、このファイル共有上で任意の操作（作成、変更、削除など）を行って問題ありません。
+
+- kompira-log:
+  この Azure ファイル共有は、kompira のログファイルを永続化することを主な目的としています。他の用途で使用することも可能ですが、その場合も既存のファイルやディレクトリの管理には注意が必要です。
+
+その他の Azure ファイル共有（特別な理由がない限り、マウントしないことを推奨）
+
+- kompira-var
+- kompira-nginx-conf
+- rabbitmq-conf
+- ssl-cert
+
+以下のコマンドでマウントしたローカルディレクトリをアンマウントすることができます。
+```
+sudo umount <マウント先のローカルディレクトリ>
+```
+
+## データ管理
+
+多くの箇所で、`<kompiraSharePath>` と Azure ファイル共有 `kompira-share` の両方が登場します。基本的にこれらは同じリソースを指しており、`<kompiraSharePath>` はコンテナ内でのマウントパスを示し、`kompira-share` はそのマウントパスに接続された Azure ファイル共有を指します。`<kompiraSharePath>` で行った作業内容は、Azure ファイル共有 `kompira-share` 側にも反映されます。逆も同様で、`kompira-share` 側での変更は `<kompiraSharePath>` にも反映されます。エクスポートやインポートなどの操作を行う際は、`<kompiraSharePath>` が `kompira-share` のルートパスであることに注意してください。
+
+Azure ファイル共有 `kompira-share` またはそのマウント先である `<kompiraSharePath>` に対して操作を行うには、以下の方法が考えられます。
+
+- Azure ファイル共有 `kompira-share` がローカルにマウントされていれば、ディレクトリ作成やファイルのアップロード・ダウンロード、アクセスなどの操作をローカルから直接行うことができます。
+- また、Azure ポータルを通じて Azure ファイル共有 `kompira-share` にアクセスし、ディレクトリの作成やファイルのアップロードなど、各種操作を実行することもできます。
+- Azure CLI を使用して `kompira-share` 内に、必要な操作を行うことも可能です。以下のコマンド実行前 `<storageAccountName>`、`<storageAccountKey>` を実際の値に置き換えてください。
+
+```
+az storage <sub-commands> \
+  --account-name <storageAccountName> \
+  --account-key <storageAccountKey> \
+  --share-name kompira-share \
+  [options...]
+```
+
+`<sub-commands>`や`[options...]`に関しては、[az storage](https://learn.microsoft.com/ja-jp/cli/azure/storage?view=azure-cli-latest)をご参照ください。
+
+```
+# 例: Azure CLI で kompira-share からローカルにファイルをダウンロードする
+az storage file download \
+  --account-name <storageAccountName> \
+  --account-key <storageAccountKey> \
+  --share-name kompira-share \
+  --path <kompira-shareのファイルパス> \
+  --dest <保存先のローカルフォルダ>
+```
+
+- 以下のコマンドを利用することで、ローカル環境からファイルのアップロードやダウンロードは行えませんが、コンテナ内で直接コマンドを実行し、必要な操作を行うことができます。コマンドでは不要な操作を行うと、コンテナがクラッシュする可能性があるのでご注意ください。コマンド実行前 `<コンテナ名>`、`<command-to-run-inside-container>` を実際の値に置き換えてください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name <コンテナ名> \
+--exec-command "<command-to-run-inside-container>"
+```
+
+```
+# 例: kompira コンテナの <kompiraSharePath> に新規ディレクトリ作成
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "mkdir <kompiraSharePath>/<新規ディレクトリ名>"
+```
+
+※ [Azure Storage Explorer](https://azure.microsoft.com/ja-JP/products/storage/storage-explorer/) でも Azure ファイル共有を管理することができます。
+
+### データのエクスポート
+
+#### export_data 管理コマンドによるエクスポート
+
+`export_data` 管理コマンドを用いると、指定したパス配下の Kompira オブジェクトを JSON 形式でエクスポートすることができます。 KE2 では kompira コンテナ上で `export_data` 管理コマンドを実行させるために、以下のように実行してください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py export_data [options...] <オブジェクトパス>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+デフォルトではエクスポートデータは標準出力に出力されるので、ローカルに書き出したい場合は、リダイレクトを利用するなどしてください。コマンド実行前 `<オブジェクトパス>` を実際の値に置き換えてください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py export_data <オブジェクトパス>" > exported_data.json
+```
+
+export_data 管理コマンドで `--zip-mode` オプションを指定した場合は、エクスポートデータはコンテナ側に ZIP ファイルとして書き出されることに注意してください。実は `<kompiraSharePath>` に ZIP ファイルとして書き出されます。深いパスにエクスポートしたい場合は、あらかじめ `<kompiraSharePath>` 内に対象ディレクトリを作成し、コマンドに `<kompiraSharePath>`代わりに`<kompiraSharePath>/<深いパス>` 形で書いてください。コマンド実行前 `<kompiraSharePath>`、`<オブジェクトパス>` を実際の値に置き換えてください。
+```
+> az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command /bin/sh
+
+> cd <kompiraSharePath> && manage.py export_data --zip-mode <オブジェクトパス> && exit
+```
+
+#### export_dir 管理コマンドによるエクスポート
+
+export_dir 管理コマンドを用いると、指定したパス配下の Kompira オブジェクトをオブジェクト毎に ディレクトリ・ファイル一式としてエクスポートすることができます。KE2 では kompira コンテナ上で export_dir 管理コマンドを実行させるために、以下のように実行してください。
+
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py export_dir [options...] <オブジェクトパス>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+export_dir 管理コマンドではコンテナ上のファイルシステムにファイルを書き出すので、以下のようにコマンドに `--current=<kompiraSharePath>` オプションを指定する必要があります。深いパスにエクスポートしたい場合は、あらかじめ `<kompiraSharePath>` 内に対象ディレクトリを作成するのは必要となります。その場合、コマンドに `--current==<kompiraSharePath>/<深いパス>` オプションを指定してください。コマンド実行前 `<kompiraSharePath>`、`<オブジェクトパス>` を実際の値に置き換えてください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py export_dir --current=<kompiraSharePath> <オブジェクトパス>"
+```
+
+
+### データのインポート
+
+#### import_data 管理コマンドによるインポート
+
+import_data 管理コマンドを用いると、export_data 管理コマンドでエクスポートしたファイルからデータを取り込むことができます。 KE2 では kompira コンテナ上で import_data 管理コマンドを実行させるために、以下のように実行してください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira manage.py \
+--exec-command "manage.py import_data [options...] <filename>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+インポートしたいファイルを Azure ファイル共有 `kompira-share` に直接配置した場合は、以下のコマンドを使用して KE2 にインポートすることができます。深いパスからインポートしたい場合は、あらかじめ `kompira-share` 内に対象ディレクトリを作成するのは必要となります。その場合、コマンドに `<kompiraSharePath>/<ファイル名>`代わりに`<kompiraSharePath>/<深いパス>/<ファイル名>` 形で書いてください。コマンド実行前に、`<kompiraSharePath>`、`<ファイル名>` は実際の値に置き換えてください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py import_data <kompiraSharePath>/<ファイル名>"
+```
+
+#### import_dir 管理コマンドによるインポート
+
+import_dir 管理コマンドを用いると、export_dir 管理コマンドでエクスポートしたディレクトリ・ファイル一式からデータを取り込むことができます。 KE2 では kompira コンテナ上で import_dir 管理コマンドを実行させるために、以下のように実行してください。
+
+```
+az container exec --resource-group KE20RG \
+--name azureci --container-name kompira \
+--exec-command "manage.py import_dir [options...] <ディレクトリパス>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+インポートしたいディレクトリ・ファイル一式を Azure ファイル共有 `kompira-share` に直接配置した場合は、以下のコマンドを使用して KE2 にインポートすることができます。深いパスからインポートしたい場合は、あらかじめ `kompira-share` 内に対象ディレクトリを作成するのは必要となります。その場合、コマンドに `<kompiraSharePath>`代わりに`<kompiraSharePath>/<深いパス>` 形で書いてください。コマンド実行前に、`<kompiraSharePath>` は実際の値に置き換えてください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py import_dir <kompiraSharePath>"
+```
+
+※ export_data・export_dir・import_data・import_dir 管理コマンドの詳細は [Kompira Enterprise 2.0 管理者マニュアル](https://fixpoint.github.io/ke2-admin-manual/management/data/index.html)をご参照ください。
+
+### オブジェクトのコンパイル
+
+#### ジョブフローオブジェクトのコンパイル
+
+以下のコマンドを実行してください。コマンド実行前に、`[options...]`, `<ジョブフロ―オブジェクトのパス>` は実際の値に置き換えてください。
+
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py compile_jobflow [options...] <ジョブフロ―オブジェクトのパス>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+#### ライブラリオブジェクトのコンパイル
+
+以下のコマンドを実行してください。コマンド実行前に、`[options...]`, `<ライブラリオブジェクトのパス>` は実際の値に置き換えてください。
+
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py compile_library [options...] <ライブラリオブジェクトのパス>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+
+### チャネルオブジェクトの操作
+
+#### チャネルオブジェクトのメッセージを見る
+以下のコマンドを実行してください。コマンド実行前に、`[options...]`, `<チャネルオブジェクトのパス>` は実際の値に置き換えてください。
+
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py peek_channel [options...] <チャネルオブジェクトのパス>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+#### チャネルオブジェクトからメッセージを取り出す
+以下のコマンドを実行してください。コマンド実行前に、`[options...]`, `<チャネルオブジェクトのパス>` は実際の値に置き換えてください。
+
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py pop_channel [options...] <チャネルオブジェクトのパス>"
+```
+`[options...]`の詳細については、--help オプションを指定することで確認できます。
+
+### プロセスオブジェクト管理
+
+### process 管理コマンドの実行
+process 管理コマンドは以下のように kompira コンテナで実行してください。
+```
+az container exec --resource-group KE20RG \
+--name azureci \
+--container-name kompira \
+--exec-command "manage.py process [options...]"
+```
+
+プロセスオブジェクト管理の詳細は [Kompira Enterprise 2.0 管理者マニュアル](https://fixpoint.github.io/ke2-admin-manual/management/data/process.html) をご参照ください。
+
+## 料金プラン
 このデプロイメントでは、以下のスペックを使用します。
 vCPU リソース：4 コア
 メモリ：16GB
