@@ -291,6 +291,21 @@ Azure Log Analytics ワークスペースに対する操作には、「ワーク
 - logAnalyticsWorkspaceId: 取得した Azure Log Analytics 「ワークスペース ID」 (デフォルト: 空)
 - logAnalyticsKey: 取得した Azure Log Analytics の「主キー」(primarySharedKey) (デフォルト: 空)
 
+また KE2 ACI を既存のサブネット内にデプロイすることもできます。
+
+> **重要:**  
+> I) 本構成では、KE2 をデプロイした直後はパブリック IP や DNS 名からはアクセスできず、プライベートネットワーク内のプライベート IP を経由してのみ接続可能です。<br/>
+> II) プライベート IP は、指定したサブネットのアドレス範囲から自動的に割り当てられます。<br/>
+> III) パブリックに公開したい場合、Azure サービス (Azure Firewall や NAT Gateway や Application Gateway など) を併用してください。
+
+この構成を採用するには、あらかじめ 仮想ネットワーク と サブネット を作成し、KE2 を ARM テンプレートでデプロイする際に、仮想ネットワーク名とサブネット名を以下のパラメーターの値を指定してください。
+
+- vnetName: 作成した仮想ネットワーク名(デフォルト: 空)
+- subnetName: 作成したサブネット名(デフォルト: 空)
+
+注意: サブネットを作成する際は、サブネットの委任設定として 「Microsoft.ContainerInstance/containerGroups」 を選択する必要があります。
+
+
 #### 実行中コンテナログの確認
 
 特定のコンテナのログを確認するには、以下のコマンドを実行します。
