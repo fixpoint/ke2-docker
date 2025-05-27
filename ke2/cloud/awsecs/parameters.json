@@ -1,0 +1,15 @@
+[
+  { "ParameterKey": "UseCustomVpc", "ParameterValue": "false" },
+  { "ParameterKey": "CustomVpcId", "ParameterValue": "" },
+  { "ParameterKey": "CustomPublicSubnetId", "ParameterValue": "" },
+  { "ParameterKey": "VpcCIDR", "ParameterValue": "10.0.0.0/16" },
+  { "ParameterKey": "PublicSubnetCIDR", "ParameterValue": "10.0.1.0/24" },
+  { "ParameterKey": "UseECSService", "ParameterValue": "true" },
+  { "ParameterKey": "ImageTag", "ParameterValue": "latest" },
+  { "ParameterKey": "EFSFileSystemId", "ParameterValue": "<ke2-efs id>" },
+  { "ParameterKey": "DatabaseURL", "ParameterValue": "<database-url>" },
+  { "ParameterKey": "TimeZone", "ParameterValue": "Asia/Tokyo" },
+  { "ParameterKey": "MaxExecutors", "ParameterValue": "2" },
+  { "ParameterKey": "LogDriver", "ParameterValue": "awslogs" },
+  { "ParameterKey": "LogGroupName", "ParameterValue": "ecs-fargate/ke2" }
+]
