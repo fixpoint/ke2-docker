@@ -3,11 +3,38 @@
   "contentVersion": "1.0.0.0",
   "resources": [
     {
+      "condition": "[variables('enableVnetIntegration')]",
+      "type": "Microsoft.Network/networkProfiles",
+      "apiVersion": "2020-11-01",
+      "name": "ke2-np",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "containerNetworkInterfaceConfigurations": [
+          {
+            "name": "ke2-if-conf",
+            "properties": {
+              "ipConfigurations": [
+                {
+                  "name": "ke2-aci-ifipcnf",
+                  "properties": {
+                    "subnet": {
+                      "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
       "type": "Microsoft.ContainerInstance/containerGroups",
       "apiVersion": "2019-12-01",
       "name": "azureci",
-      "location": "Japan East",
+      "location": "[resourceGroup().location]",
       "properties": {
+      "diagnostics": "[if(and(not(empty(parameters('logAnalyticsWorkspaceId'))), not(empty(parameters('logAnalyticsKey')))), json(concat('{\"logAnalytics\":{\"workspaceId\":\"', parameters('logAnalyticsWorkspaceId'), '\",\"workspaceKey\":\"', parameters('logAnalyticsKey'), '\",\"logType\":\"ContainerInsights\"}}')), json('{}'))]",
         "containers": [
           {
             "name": "kompira",
@@ -28,12 +55,17 @@
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
                 { "name": "CACHE_URL", "value": "redis://localhost:6379" },
                 { "name": "UWSGI_BUFFER_SIZE", "value": 65536 },
-                { "name": "TZ", "value": "[parameters('timezone')]" }
+                { "name": "TZ", "value": "[parameters('timezone')]" },
+                { "name": "HOSTNAME_SHORT", "value": "kompira" }
               ],
               "volumeMounts": [
                 {
                   "name": "kompira-var",
                   "mountPath": "/var/opt/kompira"
+                },
+                {
+                  "name": "kompira-log",
+                  "mountPath": "/var/log/kompira"
                 }
               ],
               "command": ["docker-entrypoint.sh", "uwsgi"]
@@ -58,12 +90,17 @@
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
                 { "name": "CACHE_URL", "value": "redis://localhost:6379" },
                 { "name": "TZ", "value": "[parameters('timezone')]" },
-                { "name": "MAX_EXECUTOR_NUM", "value": "[parameters('maxExecutor')]"}
+                { "name": "MAX_EXECUTOR_NUM", "value": "[parameters('maxExecutor')]"},
+                { "name": "HOSTNAME_SHORT", "value": "kengine" }
               ],
               "volumeMounts": [
                 {
                   "name": "kompira-var",
                   "mountPath": "/var/opt/kompira"
+                },
+                {
+                  "name": "kompira-log",
+                  "mountPath": "/var/log/kompira"
                 }
               ],
               "command": ["docker-entrypoint.sh", "kompirad"]
@@ -85,12 +122,17 @@
               },
               "environmentVariables": [
                 { "name": "AMQP_URL", "value": "amqp://guest:guest@localhost:5672" },
-                { "name": "TZ", "value": "[parameters('timezone')]" }
+                { "name": "TZ", "value": "[parameters('timezone')]" },
+                { "name": "HOSTNAME_SHORT", "value": "jobmngrd" }
               ],
               "volumeMounts": [
                 {
                   "name": "kompira-var",
                   "mountPath": "/var/opt/kompira"
+                },
+                {
+                  "name": "kompira-log",
+                  "mountPath": "/var/log/kompira"
                 }
               ],
               "command": ["docker-entrypoint.sh", "jobmngrd"]
@@ -187,6 +229,7 @@
           }
         ],
         "osType": "Linux",
+        "networkProfile": "[if(variables('enableVnetIntegration'), variables('networkProfileObject'), null())]",
         "volumes": [
           {
             "name": "kompira-var",
@@ -219,11 +262,20 @@
               "storageAccountName": "[parameters('storageAccountName')]",
               "storageAccountKey": "[parameters('storageAccountKey')]"
             }
+          },
+          {
+            "name": "kompira-log",
+            "azureFile": {
+              "shareName": "kompira-log",
+              "storageAccountName": "[parameters('storageAccountName')]",
+              "storageAccountKey": "[parameters('storageAccountKey')]",
+              "readOnly": false
+            }
           }
         ],
         "ipAddress": {
-          "type": "Public",
-          "dnsNameLabel": "[parameters('dnsNameLabel')]",
+          "type": "[if(variables('enableVnetIntegration'), 'Private', 'Public')]",
+          "dnsNameLabel": "[if(variables('enableVnetIntegration'), null(), parameters('dnsNameLabel'))]",
           "ports": [
             {
               "protocol": "TCP",
@@ -246,7 +298,11 @@
     }
   ],
   "variables": {
-    "keimage": "[concat('kompira.azurecr.io/kompira-enterprise:', parameters('imageTag'))]"
+    "keimage": "[concat('kompira.azurecr.io/kompira-enterprise:', parameters('imageTag'))]",
+    "enableVnetIntegration": "[and(not(empty(parameters('vnetName'))), not(empty(parameters('subnetName'))))]",
+    "networkProfileObject":{
+      "id": "[resourceId('Microsoft.Network/networkProfiles', 'ke2-np')]"
+    }
   },
   "parameters": {
     "databaseUrl": {
@@ -268,6 +324,18 @@
       "type": "string"
     },
     "storageAccountKey": {
+      "type": "string"
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string"
+    },
+    "logAnalyticsKey": {
+      "type": "string"
+    },
+    "vnetName": {
+      "type": "string"
+    },
+    "subnetName": {
       "type": "string"
     }
   }

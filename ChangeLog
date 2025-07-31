@@ -1,3 +1,15 @@
+2025-05-23  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* KE2 ACI をサブネット内にデプロイできるようにしました。(#89)
+
+2025-05-19  Hasan Mahamudul  <hasan@fixpoint.co.jp>
+
+	* KE2 ACIにおいて、ログ管理のオプションを追加しました。(#83)
+
+2025-05-09  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* SSL証明書リロードスクリプト reload-cert.sh を追加しました。(#86)
+
 2025-03-25  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
 	* ACI にも ngninx の共通設定を利用できるにしました。(#75)

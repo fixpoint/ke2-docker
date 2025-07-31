@@ -1,12 +1,13 @@
 x-kompira-common-settings:
   &kompira-common-settings
-  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.3}
+  image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.4}
   configs:
     - source: kompira-audit
       target: /opt/kompira/kompira_audit.yaml
   volumes:
     - ${KOMPIRA_VAR_DIR:-kompira_var}:/var/opt/kompira
     - ${KOMPIRA_LOG_DIR:-kompira_log}:/var/log/kompira
+    - ${KOMPIRA_SSL_DIR:-../../ssl}:/opt/kompira/ssl:ro
   extra_hosts:
     - host.docker.internal:host-gateway
   sysctls:
@@ -19,6 +20,7 @@ x-kompira-common-environ:
   CACHE_URL: ${CACHE_URL:-redis://redis:6379}
   LANGUAGE_CODE: ${LANGUAGE_CODE:-ja}
   TZ: ${TZ:-Asia/Tokyo}
+  REQUESTS_CA_BUNDLE: ${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
 
 services:
   kengine:
