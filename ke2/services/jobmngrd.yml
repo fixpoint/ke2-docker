@@ -1,6 +1,6 @@
 services:
   jobmngrd:
-    image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.4}
+    image: ${KOMPIRA_IMAGE_NAME:-kompira.azurecr.io/kompira-enterprise}:${KOMPIRA_IMAGE_TAG:-2.0.4.post1}
     hostname: jm-${HOSTNAME:?HOSTNAME must be set}
     init: true
     environment:
