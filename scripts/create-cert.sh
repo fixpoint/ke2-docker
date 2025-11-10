@@ -24,7 +24,6 @@ BASE_DIR=$(dirname $(dirname $(readlink -f $0)))
 : ${CERT_CN:="$(hostname)"}
 : ${CERT_SAN_ALTNAMES:="DNS:${CERT_CN}"}
 : ${CERT_SUBJECT:="/CN=${CERT_CN}"}
-: ${CERT_SAN:="subjectAltName = ${CERT_SAN_ALTNAMES}"}
 : ${CERT_DAYS:=3650}
 : ${CERT_KEYTYPE:="rsa:2048"}
 
@@ -62,13 +61,23 @@ fi
 # CA 証明書の作成
 if [ ! -f $SOURCE/$CA_NAME.crt ]; then
     echo "Create local CA certificate: $SOURCE/$CA_NAME.crt"
-    $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl req -x509 -noenc -newkey $CA_KEYTYPE -days $CA_DAYS -out $TARGET/$CA_NAME.crt -keyout $TARGET/$CA_NAME.key -subj "$CA_SUBJECT"
+    $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl req -x509 -noenc -newkey $CA_KEYTYPE -days $CA_DAYS -out $TARGET/$CA_NAME.crt -keyout $TARGET/$CA_NAME.key -subj "$CA_SUBJECT" \
+    -addext "subjectKeyIdentifier = hash" \
+    -addext "basicConstraints = critical, CA:true" \
+    -addext "keyUsage = critical, cRLSign, keyCertSign"
 fi
 # SSL 証明書の作成
 if [ ! -f $SOURCE/$CERT_NAME.crt ]; then
     echo "Create SSL (self-signed) certificate: $SOURCE/$CERT_NAME.crt"
     $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl req -new -newkey $CERT_KEYTYPE -noenc -sha256 -out $TARGET/$CERT_NAME.csr -keyout $TARGET/$CERT_NAME.key -subj "$CERT_SUBJECT"
-    echo "$CERT_SAN" > $SOURCE/$CERT_NAME.ext
+    cat <<__EOF__ > $TARGET/$CERT_NAME.ext
+authorityKeyIdentifier = keyid
+subjectKeyIdentifier = hash
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature
+extendedKeyUsage = serverAuth, clientAuth
+subjectAltName = ${CERT_SAN_ALTNAMES}
+__EOF__
     $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl x509 -req -days $CERT_DAYS -in $TARGET/$CERT_NAME.csr -out $TARGET/$CERT_NAME.crt -CA $TARGET/$CA_NAME.crt -CAkey $TARGET/$CA_NAME.key -CAcreateserial -extfile $TARGET/$CERT_NAME.ext
 else
     echo "WARNING: SSL certificate $SOURCE/$CERT_NAME.crt already exists"
