@@ -1,6 +1,11 @@
 # ke2-docker リリースノート
 
 ---
+## 2025/12/12 (2.0.5-latest)
+### コンテナイメージ
+- KOMPIRA_IMAGE_TAG を 2.0.5-latest に更新しました。
+
+---
 ## 2025/10/10 (2.0.4.post1)
 ### コンテナイメージ
 - KOMPIRA_IMAGE_TAG を 2.0.4.post1 に更新しました。
