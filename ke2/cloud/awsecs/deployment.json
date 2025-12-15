@@ -1,0 +1,748 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Template to deploy KE2 (External DB configuration) containers using ECS Fargate",
+  "Parameters": {
+    "UseCustomVpc": {
+      "Description": "Set to true to use an existing VPC.",
+      "Type": "String",
+      "AllowedValues": ["true", "false"],
+      "Default": "false"
+    },
+    "CustomVpcId": {
+      "Description": "The ID of the existing VPC to deploy into. (Required if UseCustomVpc is true)",
+      "Type": "String",
+      "Default": ""
+    },
+    "CustomPublicSubnetId": {
+      "Description": "The ID of the existing public subnet in the custom VPC. (Required if UseCustomVpc is true)",
+      "Type": "String",
+      "Default": ""
+    },
+    "VpcCIDR": {
+      "Description": "CIDR block for the VPC (if not using custom VPC).",
+      "Type": "String",
+      "Default": "10.0.0.0/16"
+    },
+    "PublicSubnetCIDR": {
+      "Description": "CIDR block for the public subnet (if not using custom VPC).",
+      "Type": "String",
+      "Default": "10.0.1.0/24"
+    },
+    "UseECSService": {
+      "Description": "If true, the ECS Service will handle the deployment process. If false, you will handle containers deployment task manually.",
+      "Type": "String",
+      "AllowedValues": ["true", "false"],
+      "Default": "true"
+    },
+    "ImageTag": {
+      "Description": "KE2 image tag",
+      "Type": "String",
+      "Default": "latest"
+    },
+    "EFSFileSystemId": {
+      "Description": "EFS file system ID.",
+      "Type": "String"
+    },
+    "DatabaseURL": {
+      "Description": "Database URL.",
+      "Type": "String"
+    },
+    "TimeZone": {
+      "Description": "Application timezone",
+      "Type": "String",
+      "Default": "Asia/Tokyo"
+    },
+    "MaxExecutors": {
+      "Description": "Maximum number of executors.",
+      "Type": "Number",
+      "Default": 2
+    },
+    "LogDriver": {
+      "Description": "Log driver to use (awslogs, or none)",
+      "Type": "String",
+      "Default": "awslogs",
+      "AllowedValues": [
+        "awslogs",
+        "none"
+      ]
+    },
+    "LogGroupName": {
+      "Description": "Name of the CloudWatch Log Group for awslogs or fluentd logging",
+      "Type": "String",
+      "Default": "ecs-fargate/ke2"
+    }
+  },
+  "Conditions": {
+    "UseCustomVpcCond": {
+      "Fn::Equals": [
+        { "Ref": "UseCustomVpc" },
+        "true"
+      ]
+    },
+    "CreateVpc": {
+      "Fn::Not": [
+        { "Condition": "UseCustomVpcCond" }
+      ]
+    },
+    "CreateECSService": {
+      "Fn::Equals": [
+        { "Ref": "UseECSService" },
+        "true"
+      ]
+    },
+    "CreateLogGroup": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "LogDriver" },
+            "none"
+          ]
+        }
+      ]
+    },
+    "UseAWSLogs": {
+      "Fn::Equals": [
+        { "Ref": "LogDriver" },
+        "awslogs"
+      ]
+    }
+  },
+  "Resources": {
+    "LogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Condition": "CreateLogGroup",
+      "Properties": {
+        "LogGroupName": { "Ref": "LogGroupName" }
+      }
+    },
+    "VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Condition": "CreateVpc",
+      "Properties": {
+        "CidrBlock": { "Ref": "VpcCIDR" },
+        "EnableDnsSupport": true,
+        "EnableDnsHostnames": true,
+        "Tags": [
+          { "Key": "Name", "Value": "KE2FargateVPC" }
+        ]
+      }
+    },
+    "PublicSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Condition": "CreateVpc",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "CidrBlock": { "Ref": "PublicSubnetCIDR" },
+        "MapPublicIpOnLaunch": true,
+        "AvailabilityZone": { "Fn::Select": [ 0, { "Fn::GetAZs": "" } ] },
+        "Tags": [
+          { "Key": "Name", "Value": "KE2FargatePublicSubnet" }
+        ]
+      }
+    },
+    "InternetGateway": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Condition": "CreateVpc",
+      "Properties": {
+        "Tags": [
+          { "Key": "Name", "Value": "KE2FargateIgw" }
+        ]
+      }
+    },
+    "VPCGatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Condition": "CreateVpc",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "InternetGatewayId": { "Ref": "InternetGateway" }
+      }
+    },
+    "PublicRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Condition": "CreateVpc",
+      "Properties": {
+        "VpcId": { "Ref": "VPC" },
+        "Tags": [
+          { "Key": "Name", "Value": "KE2FargatePublicRouteTable" }
+        ]
+      }
+    },
+    "PublicRoute": {
+      "Type": "AWS::EC2::Route",
+      "Condition": "CreateVpc",
+      "Properties": {
+        "RouteTableId": { "Ref": "PublicRouteTable" },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": { "Ref": "InternetGateway" }
+      }
+    },
+    "SubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Condition": "CreateVpc",
+      "Properties": {
+        "SubnetId": { "Ref": "PublicSubnet" },
+        "RouteTableId": { "Ref": "PublicRouteTable" }
+      }
+    },
+    "ServiceSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow inbound HTTP traffic to the ECS tasks.",
+        "VpcId": {
+          "Fn::If": [
+            "UseCustomVpcCond",
+            { "Ref": "CustomVpcId" },
+            { "Ref": "VPC" }
+          ]
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Tags": [
+          { "Key": "Name", "Value": "KE2FargateServiceSg" }
+        ]
+      }
+    },
+    "EFSMountTargetSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for EFS mount target",
+        "VpcId": {
+          "Fn::If": [
+            "UseCustomVpcCond",
+            { "Ref": "CustomVpcId" },
+            { "Ref": "VPC" }
+          ]
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 2049,
+            "ToPort": 2049,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "Tags": [
+          { "Key": "Name", "Value": "KE2FargateEFSMountTargetSecurityGroup" }
+        ]
+      }
+    },
+    "EFSMountTarget": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": { "Ref": "EFSFileSystemId" },
+        "SubnetId": {
+          "Fn::If": [
+            "UseCustomVpcCond",
+            { "Ref": "CustomPublicSubnetId" },
+            { "Ref": "PublicSubnet" }
+          ]
+        },
+        "SecurityGroups": [
+          { "Ref": "EFSMountTargetSecurityGroup" }
+        ]
+      }
+    },
+    "NginxEFSAccessPoint": {
+      "Type": "AWS::EFS::AccessPoint",
+      "Properties": {
+        "FileSystemId": { "Ref": "EFSFileSystemId" },
+        "PosixUser": {
+          "Uid": "1000",
+          "Gid": "1000"
+        },
+        "RootDirectory": {
+          "CreationInfo": {
+            "OwnerUid": "1000",
+            "OwnerGid": "1000",
+            "Permissions": "755"
+          },
+          "Path": "/configs/nginx-conf"
+        }
+      }
+    },
+    "SSLCertEFSAccessPoint": {
+      "Type": "AWS::EFS::AccessPoint",
+      "Properties": {
+        "FileSystemId": { "Ref": "EFSFileSystemId" },
+        "PosixUser": {
+          "Uid": "1000",
+          "Gid": "1000"
+        },
+        "RootDirectory": {
+          "CreationInfo": {
+            "OwnerUid": "1000",
+            "OwnerGid": "1000",
+            "Permissions": "755"
+          },
+          "Path": "/ssl-cert"
+        }
+      }
+    },
+    "KompiraVarEFSAccessPoint": {
+      "Type": "AWS::EFS::AccessPoint",
+      "Properties": {
+        "FileSystemId": { "Ref": "EFSFileSystemId" },
+        "PosixUser": {
+          "Uid": "1000",
+          "Gid": "1000"
+        },
+        "RootDirectory": {
+          "CreationInfo": {
+            "OwnerUid": "1000",
+            "OwnerGid": "1000",
+            "Permissions": "755"
+          },
+          "Path": "/kompira-var"
+        }
+      }
+    },
+    "RabbitEFSAccessPoint": {
+      "Type": "AWS::EFS::AccessPoint",
+      "Properties": {
+        "FileSystemId": { "Ref": "EFSFileSystemId" },
+        "PosixUser": {
+          "Uid": "1000",
+          "Gid": "1000"
+        },
+        "RootDirectory": {
+          "CreationInfo": {
+            "OwnerUid": "1000",
+            "OwnerGid": "1000",
+            "Permissions": "755"
+          },
+          "Path": "/configs/rabbitmq-conf"
+        }
+      }
+    },
+    "ECSCluster": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": "KE2FargateCluster"
+      }
+    },
+    "TaskExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "ECSFargateTaskExecutionRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        ]
+      }
+    },
+    "TaskRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "ECSFargateTaskRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "AllowSSMMessages",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ssmmessages:CreateControlChannel",
+                    "ssmmessages:CreateDataChannel",
+                    "ssmmessages:OpenControlChannel",
+                    "ssmmessages:OpenDataChannel"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "TaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": "KE2Task",
+        "Cpu": "4096",
+        "Memory": "16384",
+        "RuntimePlatform": {
+          "OperatingSystemFamily": "LINUX",
+          "CpuArchitecture": "X86_64"
+        },
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "ExecutionRoleArn": { "Fn::GetAtt": [ "TaskExecutionRole", "Arn" ] },
+        "TaskRoleArn": { "Ref": "TaskRole" },
+        "ContainerDefinitions": [
+          {
+            "Name": "kompira",
+            "Image": { "Fn::Sub": "kompira.azurecr.io/kompira-enterprise:${ImageTag}" },
+            "PortMappings": [
+              { "ContainerPort": 8000 }
+            ],
+            "Command": [ "uwsgi" ],
+            "Environment": [
+              {
+                "Name": "DATABASE_URL",
+                "Value": { "Ref": "DatabaseURL" }
+              },
+              {
+                "Name": "AMQP_URL",
+                "Value": "amqp://guest:guest@localhost:5672"
+              },
+              {
+                "Name": "CACHE_URL",
+                "Value": "redis://localhost:6379"
+              },
+              {
+                "Name": "TZ",
+                "Value": { "Ref": "TimeZone" }
+              }
+            ],
+            "MountPoints": [
+              {
+                "SourceVolume": "kompiraVarVolume",
+                "ContainerPath": "/var/opt/kompira",
+                "ReadOnly": false
+              }
+            ],
+            "LogConfiguration": {
+              "Fn::If": [
+                "UseAWSLogs",
+                {
+                  "LogDriver": "awslogs",
+                  "Options": {
+                    "awslogs-region": { "Ref": "AWS::Region" },
+                    "awslogs-group": { "Ref": "LogGroupName" },
+                    "awslogs-stream-prefix": "kompira"
+                  }
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
+            }
+          },
+          {
+            "Name": "kengine",
+            "Image": { "Fn::Sub": "kompira.azurecr.io/kompira-enterprise:${ImageTag}" },
+            "Command": [ "kompirad" ],
+            "Environment": [
+              {
+                "Name": "DATABASE_URL",
+                "Value": { "Ref": "DatabaseURL" }
+              },
+              {
+                "Name": "AMQP_URL",
+                "Value": "amqp://guest:guest@localhost:5672"
+              },
+              {
+                "Name": "CACHE_URL",
+                "Value": "redis://localhost:6379"
+              },
+              {
+                "Name": "TZ",
+                "Value": { "Ref": "TimeZone" }
+              },
+              {
+                "Name": "MAX_EXECUTOR_NUM",
+                "Value": { "Ref": "MaxExecutors" }
+              }
+            ],
+            "MountPoints": [
+              {
+                "SourceVolume": "kompiraVarVolume",
+                "ContainerPath": "/var/opt/kompira",
+                "ReadOnly": false
+              }
+            ],
+            "LogConfiguration": {
+              "Fn::If": [
+                "UseAWSLogs",
+                {
+                  "LogDriver": "awslogs",
+                  "Options": {
+                    "awslogs-region": { "Ref": "AWS::Region" },
+                    "awslogs-group": { "Ref": "LogGroupName" },
+                    "awslogs-stream-prefix": "kengine"
+                  }
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
+            }
+          },
+          {
+            "Name": "jobmngrd",
+            "Image": { "Fn::Sub": "kompira.azurecr.io/kompira-enterprise:${ImageTag}" },
+            "Command": [ "jobmngrd" ],
+            "Environment": [
+              {
+                "Name": "AMQP_URL",
+                "Value": "amqp://guest:guest@localhost:5672"
+              },
+              {
+                "Name": "TZ",
+                "Value": { "Ref": "TimeZone" }
+              }
+            ],
+            "MountPoints": [
+              {
+                "SourceVolume": "kompiraVarVolume",
+                "ContainerPath": "/var/opt/kompira",
+                "ReadOnly": false
+              }
+            ],
+            "LogConfiguration": {
+              "Fn::If": [
+                "UseAWSLogs",
+                {
+                  "LogDriver": "awslogs",
+                  "Options": {
+                    "awslogs-region": { "Ref": "AWS::Region" },
+                    "awslogs-group": { "Ref": "LogGroupName" },
+                    "awslogs-stream-prefix": "jobmngrd"
+                  }
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
+            }
+          },
+          {
+            "Name": "rabbitmq",
+            "Image": "registry.hub.docker.com/library/rabbitmq:3.12-alpine",
+            "PortMappings": [
+              { "ContainerPort": 5671 },
+              { "ContainerPort": 5672 }
+            ],
+            "MountPoints": [
+              {
+                "SourceVolume": "sslCertVolume",
+                "ContainerPath": "/etc/rabbitmq/ssl"
+              },
+              {
+                "SourceVolume": "rabbitConfVolume",
+                "ContainerPath": "/etc/rabbitmq/conf.d"
+              }
+            ],
+            "LogConfiguration": {
+              "Fn::If": [
+                "UseAWSLogs",
+                {
+                  "LogDriver": "awslogs",
+                  "Options": {
+                    "awslogs-region": { "Ref": "AWS::Region" },
+                    "awslogs-group": { "Ref": "LogGroupName" },
+                    "awslogs-stream-prefix": "rabbitmq"
+                  }
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
+            }
+          },
+          {
+            "Name": "redis",
+            "Image": "registry.hub.docker.com/library/redis:7.2-alpine",
+            "PortMappings": [
+              { "ContainerPort": 6379 }
+            ],
+            "LogConfiguration": {
+              "Fn::If": [
+                "UseAWSLogs",
+                {
+                  "LogDriver": "awslogs",
+                  "Options": {
+                    "awslogs-region": { "Ref": "AWS::Region" },
+                    "awslogs-group": { "Ref": "LogGroupName" },
+                    "awslogs-stream-prefix": "redis"
+                  }
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
+            }
+          },
+          {
+            "Name": "nginx",
+            "Image": "registry.hub.docker.com/library/nginx:1.25-alpine",
+            "PortMappings": [
+              { "ContainerPort": 80 },
+              { "ContainerPort": 443 }
+            ],
+            "Environment": [
+              {
+                "Name": "KOMPIRA_HOST",
+                "Value": "localhost"
+              },
+              {
+                "Name": "KOMPIRA_PORT",
+                "Value": "8000"
+              }
+            ],
+            "MountPoints": [
+              {
+                "SourceVolume": "nginxConfVolume",
+                "ContainerPath": "/etc/nginx/templates"
+              },
+              {
+                "SourceVolume": "sslCertVolume",
+                "ContainerPath": "/etc/nginx/ssl"
+              },
+              {
+                "SourceVolume": "kompiraVarVolume",
+                "ContainerPath": "/var/opt/kompira",
+                "ReadOnly": false
+              }
+            ],
+            "LogConfiguration": {
+              "Fn::If": [
+                "UseAWSLogs",
+                {
+                  "LogDriver": "awslogs",
+                  "Options": {
+                    "awslogs-region": { "Ref": "AWS::Region" },
+                    "awslogs-group": { "Ref": "LogGroupName" },
+                    "awslogs-stream-prefix": "nginx"
+                  }
+                },
+                { "Ref": "AWS::NoValue" }
+              ]
+            }
+          }
+        ],
+        "Volumes": [
+          {
+            "Name": "nginxConfVolume",
+            "EFSVolumeConfiguration": {
+              "FileSystemId": { "Ref": "EFSFileSystemId" },
+              "TransitEncryption": "ENABLED",
+              "AuthorizationConfig": {
+                "AccessPointId": { "Ref": "NginxEFSAccessPoint" },
+                "IAM": "DISABLED"
+              }
+            }
+          },
+          {
+            "Name": "sslCertVolume",
+            "EFSVolumeConfiguration": {
+              "FileSystemId": { "Ref": "EFSFileSystemId" },
+              "TransitEncryption": "ENABLED",
+              "AuthorizationConfig": {
+                "AccessPointId": { "Ref": "SSLCertEFSAccessPoint" },
+                "IAM": "DISABLED"
+              }
+            }
+          },
+          {
+            "Name": "kompiraVarVolume",
+            "EFSVolumeConfiguration": {
+              "FileSystemId": { "Ref": "EFSFileSystemId" },
+              "TransitEncryption": "ENABLED",
+              "AuthorizationConfig": {
+                "AccessPointId": { "Ref": "KompiraVarEFSAccessPoint" },
+                "IAM": "DISABLED"
+              }
+            }
+          },
+          {
+            "Name": "rabbitConfVolume",
+            "EFSVolumeConfiguration": {
+              "FileSystemId": { "Ref": "EFSFileSystemId" },
+              "TransitEncryption": "ENABLED",
+              "AuthorizationConfig": {
+                "AccessPointId": { "Ref": "RabbitEFSAccessPoint" },
+                "IAM": "DISABLED"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "ECSService": {
+      "Type": "AWS::ECS::Service",
+      "Condition": "CreateECSService",
+      "DependsOn": [
+        "VPCGatewayAttachment"
+      ],
+      "Properties": {
+        "ServiceName": "KE2FargateService",
+        "Cluster": { "Ref": "ECSCluster" },
+        "TaskDefinition": { "Ref": "TaskDefinition" },
+        "LaunchType": "FARGATE",
+        "DesiredCount": 1,
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "Subnets": [
+              {
+                "Fn::If": [
+                  "UseCustomVpcCond",
+                  { "Ref": "CustomPublicSubnetId" },
+                  { "Ref": "PublicSubnet" }
+                ]
+              }
+            ],
+            "SecurityGroups": [
+              { "Ref": "ServiceSecurityGroup" }
+            ],
+            "AssignPublicIp": "ENABLED"
+          }
+        },
+        "EnableExecuteCommand": true
+      }
+    }
+  },
+  "Outputs": {
+  "ClusterName": {
+    "Description": "ECS Cluster Name",
+    "Value": { "Ref": "ECSCluster" }
+  },
+  "TaskDefinitionFamily": {
+    "Description": "ECS Task Definition Family",
+    "Value": { "Ref": "TaskDefinition" }
+  },
+  "PublicSubnetId": {
+    "Description": "Public Subnet ID",
+    "Value": {
+      "Fn::If": [
+        "UseCustomVpcCond",
+        { "Ref": "CustomPublicSubnetId" },
+        { "Ref": "PublicSubnet" }
+      ]
+    }
+  },
+  "ServiceSecurityGroup": {
+    "Description": "Security Group for tasks",
+    "Value": { "Ref": "ServiceSecurityGroup" }
+  }
+}
+}
