@@ -1,0 +1,19 @@
+services:
+  koda:
+    image: kompira.azurecr.io/koda:latest
+    profiles: ["koda"]
+    environment:
+      KE_BASE_URL: ${KE_BASE_URL:-none}
+      KE_KODA_UTILS_PATH: /system/utilities/koda/
+      AZURE_OPENAI_ENDPOINT: https://gen-jobflow-gpt41.openai.azure.com/
+      AZURE_OPENAI_API_VERSION: 2024-12-01-preview
+      KE_AUTH_TOKEN: ${KE_AUTH_TOKEN:-none}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-none}
+      KODA_MODEL: o3
+      KODA_EMBEDDING_MODEL: text-embedding-3-small
+      KODA_VECTORS_PATH: dataset/examples/vectors
+      KODA_DSL_FILE_PATH: dataset/basic/dsl.md
+      KODA_DSL_WORKSPACE_FILE_PATH: dataset/basic/jobflow_base_workspace.md
+      KODA_DSL_GUIDELINES_FILE_PATH: dataset/basic/dsl_guidelines.md
+    ports:
+      - "8002:8002"

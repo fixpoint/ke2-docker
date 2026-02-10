@@ -19,6 +19,9 @@ services:
     depends_on:
       - rabbitmq
     restart: always
+  koda:
+    logging: *default-logging
+    restart: always
   kengine:
     logging: *default-logging
     depends_on:

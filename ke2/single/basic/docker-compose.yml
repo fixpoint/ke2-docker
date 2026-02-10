@@ -7,3 +7,4 @@ include:
   - ../../services/jobmngrd.yml
   - ../../services/kompira.yml
   - ../../services/nginx.yml
+  - ../../services/koda.yml
