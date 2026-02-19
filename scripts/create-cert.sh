@@ -70,7 +70,7 @@ fi
 if [ ! -f $SOURCE/$CERT_NAME.crt ]; then
     echo "Create SSL (self-signed) certificate: $SOURCE/$CERT_NAME.crt"
     $DOCKER_RUN -v $SOURCE:$TARGET $IMAGE openssl req -new -newkey $CERT_KEYTYPE -noenc -sha256 -out $TARGET/$CERT_NAME.csr -keyout $TARGET/$CERT_NAME.key -subj "$CERT_SUBJECT"
-    cat <<__EOF__ > $TARGET/$CERT_NAME.ext
+    cat <<__EOF__ > $SOURCE/$CERT_NAME.ext
 authorityKeyIdentifier = keyid
 subjectKeyIdentifier = hash
 basicConstraints = critical, CA:false
