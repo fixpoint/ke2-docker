@@ -1,6 +1,11 @@
 # ke2-docker リリースノート
 
 ---
+## 2026/03/06 (2.0.5-latest)
+### 変更
+- create-cert.sh: Python 3.13 および厳格なSSL検証環境に対応しました。(#95)
+
+---
 ## 2025/12/12 (2.0.5-latest)
 ### コンテナイメージ
 - KOMPIRA_IMAGE_TAG を 2.0.5-latest に更新しました。

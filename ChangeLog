@@ -1,3 +1,7 @@
+2026-02-20  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* create-cert.sh: Python 3.13 および厳格なSSL検証環境に対応しました。(#95)
+
 2025-05-23  Hasan Mahamudul  <hasan@fixpoint.co.jp>
 
 	* KE2 ACI をサブネット内にデプロイできるようにしました。(#89)
