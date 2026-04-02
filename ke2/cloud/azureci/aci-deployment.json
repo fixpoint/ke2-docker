@@ -58,16 +58,7 @@
                 { "name": "TZ", "value": "[parameters('timezone')]" },
                 { "name": "HOSTNAME_SHORT", "value": "kompira" }
               ],
-              "volumeMounts": [
-                {
-                  "name": "kompira-var",
-                  "mountPath": "/var/opt/kompira"
-                },
-                {
-                  "name": "kompira-log",
-                  "mountPath": "/var/log/kompira"
-                }
-              ],
+              "volumeMounts": "[variables('commonVolumeMounts')]",
               "command": ["docker-entrypoint.sh", "uwsgi"]
             }
           },
@@ -93,16 +84,7 @@
                 { "name": "MAX_EXECUTOR_NUM", "value": "[parameters('maxExecutor')]"},
                 { "name": "HOSTNAME_SHORT", "value": "kengine" }
               ],
-              "volumeMounts": [
-                {
-                  "name": "kompira-var",
-                  "mountPath": "/var/opt/kompira"
-                },
-                {
-                  "name": "kompira-log",
-                  "mountPath": "/var/log/kompira"
-                }
-              ],
+              "volumeMounts": "[variables('commonVolumeMounts')]",
               "command": ["docker-entrypoint.sh", "kompirad"]
             }
           },
@@ -125,16 +107,7 @@
                 { "name": "TZ", "value": "[parameters('timezone')]" },
                 { "name": "HOSTNAME_SHORT", "value": "jobmngrd" }
               ],
-              "volumeMounts": [
-                {
-                  "name": "kompira-var",
-                  "mountPath": "/var/opt/kompira"
-                },
-                {
-                  "name": "kompira-log",
-                  "mountPath": "/var/log/kompira"
-                }
-              ],
+              "volumeMounts": "[variables('commonVolumeMounts')]",
               "command": ["docker-entrypoint.sh", "jobmngrd"]
             }
           },
@@ -302,7 +275,17 @@
     "enableVnetIntegration": "[and(not(empty(parameters('vnetName'))), not(empty(parameters('subnetName'))))]",
     "networkProfileObject":{
       "id": "[resourceId('Microsoft.Network/networkProfiles', 'ke2-np')]"
-    }
+    },
+    "commonVolumeMounts": [
+      {
+        "name": "kompira-var",
+        "mountPath": "/var/opt/kompira"
+      },
+      {
+        "name": "kompira-log",
+        "mountPath": "/var/log/kompira"
+      }
+    ]
   },
   "parameters": {
     "databaseUrl": {
