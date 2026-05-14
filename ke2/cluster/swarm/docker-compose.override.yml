@@ -16,6 +16,12 @@ x-multi-replicated:
   placement:
     max_replicas_per_node: 1
 
+# Swarm 構成では postgres コンテナを起動せず外部 DB を前提とするため、DATABASE_URL の指定を必須とする。
+# setup_stack.sh は DATABASE_URL を事前に export してから docker compose config を呼ぶため、
+# スクリプト経由のセットアップでは発火しない。スクリプト未経由のセットアップで未指定の場合に即エラーで停止する。
+x-required-db-env: &required-db-env
+  DATABASE_URL: '${DATABASE_URL:?DATABASE_URL must be set: e.g., pgsql://user:password@host:5432/dbname}'
+
 services:
   redis:
     hostname: "re-{{.Node.Hostname}}"
@@ -37,19 +43,22 @@ services:
   jobmngrd:
     hostname: "jm-{{.Node.Hostname}}"
     environment:
-      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
+      <<: *required-db-env
+      AMQP_URL: ${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
     logging: *default-logging
     deploy: *multi-replicated
   kengine:
     hostname: "ke-{{.Node.Hostname}}"
     environment:
-      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
+      <<: *required-db-env
+      AMQP_URL: ${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
     logging: *default-logging
     deploy: *multi-replicated
   kompira:
     hostname: "ap-{{.Node.Hostname}}"
     environment:
-      - AMQP_URL=${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
+      <<: *required-db-env
+      AMQP_URL: ${AMQP_URL:-amqp://guest:guest@mq-<<.Node.Hostname>>:5672}
     logging: *default-logging
     deploy: *multi-replicated
   nginx:
