@@ -3,4 +3,4 @@ services:
     image: registry.hub.docker.com/library/redis:7.2-alpine
     hostname: re-${HOSTNAME:?HOSTNAME must be set}
     environment:
-      - TZ=${TZ:-Asia/Tokyo}
+      TZ: ${TZ:-Asia/Tokyo}

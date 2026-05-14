@@ -4,8 +4,9 @@ services:
     image: registry.hub.docker.com/library/postgres:16.3-alpine
     hostname: db-${HOSTNAME:?HOSTNAME must be set}
     environment:
-      POSTGRES_PASSWORD: kompira
-      POSTGRES_USER: kompira
+      POSTGRES_USER: ${DATABASE_USER:-kompira}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-kompira}
+      POSTGRES_DB: ${DATABASE_NAME:-kompira}
       TZ: ${TZ:-Asia/Tokyo}
     volumes:
       - ${PGDATA:-kompira_pg16}:/var/lib/postgresql/data
