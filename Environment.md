@@ -10,7 +10,9 @@
 | `KOMPIRA_IMAGE_NAME`  | "kompira.azurecr.io/kompira-enterprise"             | Kompira イメージ           |
 | `KOMPIRA_IMAGE_TAG`   | (下記参照)                                          | Kompira タグ               |
 | `DATABASE_URL`        | "pgsql://kompira@//var/run/postgresql/kompira"      | データベースの接続先       |
+| `DATABASE_USER` / `DATABASE_PASSWORD` / `DATABASE_NAME` | (下記参照)                | DATABASE_URL の組み立て要素 |
 | `AMQP_URL`            | "amqp://guest:guest@localhost:5672"                 | メッセージキューの接続先   |
+| `AMQP_USER` / `AMQP_PASSWORD` | (下記参照)                                  | AMQP_URL の組み立て要素     |
 | `CACHE_URL`           | "redis://localhost:6379"                            | キャッシュの接続先         |
 | `TZ`                  | "Asia/Tokyo"                                        | タイムゾーン               |
 | `LANGUAGE_CODE`       | "ja"                                                | 言語設定                   |
@@ -42,6 +44,49 @@ Kompira に必要なサブシステムである、データベースやメッセ
 - キャッシュ: 同じサーバ上の Redis に TCP 接続します。
 
 参考: https://django-environ.readthedocs.io/en/latest/types.html#environ-env-db-url
+
+なお ke2-docker の compose ファイルでは、`DATABASE_URL` / `AMQP_URL` を直接指定しなかった場合、後述の `DATABASE_USER` 等の個別変数から URL を自動構築する仕組みになっています。
+
+## DATABASE_USER / DATABASE_PASSWORD / DATABASE_NAME / AMQP_USER / AMQP_PASSWORD
+
+接続情報を URL 文字列として `DATABASE_URL` / `AMQP_URL` で指定する代わりに、ユーザ名・パスワード・データベース名を個別の環境変数で指定できます。
+
+| 環境変数名            | デフォルト  | 用途                                                                    |
+|-----------------------|-------------|-------------------------------------------------------------------------|
+| `DATABASE_USER`       | "kompira"   | DATABASE_URL のユーザ名。single/basic では postgres コンテナの初期ユーザ名にも適用 |
+| `DATABASE_PASSWORD`   | "kompira"   | DATABASE_URL のパスワード。single/basic では postgres コンテナの初期パスワードにも適用 |
+| `DATABASE_NAME`       | "kompira"   | DATABASE_URL のデータベース名。single/basic では postgres コンテナの初期 DB 名にも適用 |
+| `AMQP_USER`           | "guest"     | AMQP_URL のユーザ名。rabbitmq コンテナの初期ユーザ名にも適用            |
+| `AMQP_PASSWORD`       | "guest"     | AMQP_URL のパスワード。rabbitmq コンテナの初期パスワードにも適用        |
+
+これらのデフォルト値は互換性のための仮の値です。本番運用前に必ず変更してください。
+
+`DATABASE_URL` または `AMQP_URL` を直接指定した場合、対応する個別変数 (`DATABASE_USER` 等または `AMQP_USER` 等) は無視され、指定された URL がそのまま使われます。
+
+### URL 予約文字を含むパスワードの扱い
+
+`DATABASE_PASSWORD` / `AMQP_PASSWORD` に URL 予約文字を含むパスワードを設定する場合、組み立てられた URL に正しく埋め込めない問題が発生します。
+
+URL に文字列を埋め込む際のエンコード規約は [RFC 3986 (URI: Generic Syntax)](https://datatracker.ietf.org/doc/html/rfc3986) で定められており、§2.3 で「unreserved」と定義された英数字および `-` `_` `.` `~` 以外の文字は `%XX` (XX は ASCII コードの 16 進数表記) でパーセントエンコードする必要があります。`DATABASE_URL` / `AMQP_URL` の userinfo (ユーザ名・パスワード部分) も同規約に従って解釈されます ([RFC 3986 §3.2.1](https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1))。
+
+主要な変換例:
+
+| 文字 | エンコード後 | 文字       | エンコード後 |
+|------|--------------|------------|--------------|
+| `@`  | `%40`        | `?`        | `%3F`        |
+| `:`  | `%3A`        | `#`        | `%23`        |
+| `/`  | `%2F`        | `%`        | `%25`        |
+| `+`  | `%2B`        | `&`        | `%26`        |
+| `=`  | `%3D`        | ` ` (空白) | `%20`        |
+
+実例: 実パスワード `p@ss:w0rd` を `DATABASE_URL` に埋め込む場合は、`pgsql://user:p%40ss%3Aw0rd@host:5432/db` のように `p@ss:w0rd` → `p%40ss%3Aw0rd` に変換して指定します。
+
+各環境変数の挙動:
+
+- **`DATABASE_PASSWORD`**: django-environ が URL デコードを行うため、URL 予約文字を含むパスワードも利用可能（kompira コンテナイメージのバージョン依存なし）
+- **`AMQP_PASSWORD`**: kompira コンテナイメージが **v2.0.5.post2 以降** である必要があります（kompira-v2#367 修正で AMQP_URL の userinfo を URL デコードするようになったため）。v2.0.5.post1 以前のイメージを利用する場合、`AMQP_PASSWORD` には RFC 3986 unreserved set (英数字と `-_.~`) のみを使用してください
+
+URL 予約文字を含むパスワードを安全に設定するには、`scripts/url-encode.sh` で個別の文字列をエンコードするか、`scripts/init-env.sh` で `.env` を自動生成する方法を推奨します (init-env.sh は内部で url-encode.sh を利用して URL エンコードを自動処理します)。詳細は管理者マニュアル「資格情報管理」章を参照してください。
 
 ## TZ / LANGUAGE_CODE
 
