@@ -4,8 +4,13 @@ services:
     image: registry.hub.docker.com/library/postgres:16.3-alpine
     hostname: db-${HOSTNAME:?HOSTNAME must be set}
     environment:
-      POSTGRES_PASSWORD: kompira
-      POSTGRES_USER: kompira
+      # POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB は **PGDATA ボリュームが空の初回起動時のみ**
+      # 反映される (公式 postgres イメージの仕様)。後から DATABASE_USER / DATABASE_PASSWORD /
+      # DATABASE_NAME を変更しても DB 内のユーザ・パスワード・データベース名は更新されない。
+      # 既存環境で変更したい場合の手順は管理者マニュアル「資格情報管理」章を参照。
+      POSTGRES_USER: ${DATABASE_USER:-kompira}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-kompira}
+      POSTGRES_DB: ${DATABASE_NAME:-kompira}
       TZ: ${TZ:-Asia/Tokyo}
     volumes:
       - ${PGDATA:-kompira_pg16}:/var/lib/postgresql/data

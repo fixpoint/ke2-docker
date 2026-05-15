@@ -4,6 +4,11 @@ x-logging:
   # options:
   #   tag: "docker.{{.Name}}"
 
+# 外部DB構成では postgres コンテナを起動しないため、DATABASE_URL の指定を必須とする。
+# 未指定の場合は docker compose up 時にエラーで停止する。
+x-required-db-env: &required-db-env
+  DATABASE_URL: '${DATABASE_URL:?DATABASE_URL must be set: e.g., pgsql://user:password@host:5432/dbname}'
+
 services:
   redis:
     logging: *default-logging
@@ -12,11 +17,15 @@ services:
     logging: *default-logging
     restart: always
   jobmngrd:
+    environment:
+      <<: *required-db-env
     logging: *default-logging
     depends_on:
       - rabbitmq
     restart: always
   kengine:
+    environment:
+      <<: *required-db-env
     volumes:
       - type: bind
         source: ./.secret_key
@@ -27,6 +36,8 @@ services:
       - rabbitmq
     restart: always
   kompira:
+    environment:
+      <<: *required-db-env
     volumes:
       - type: bind
         source: ./.secret_key
