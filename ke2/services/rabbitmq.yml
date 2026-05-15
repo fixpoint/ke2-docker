@@ -4,6 +4,12 @@ services:
     hostname: mq-${HOSTNAME:?HOSTNAME must be set}
     environment:
       RABBITMQ_DATA_DIR: /var/lib/rabbitmq
+      # RABBITMQ_DEFAULT_USER / RABBITMQ_DEFAULT_PASS は **rabbitmq データボリュームが空の初回起動時のみ**
+      # 反映される (公式 rabbitmq イメージの仕様)。後から AMQP_USER / AMQP_PASSWORD を変更しても
+      # rabbitmq のユーザ・パスワードは更新されない。既存環境で変更したい場合の手順は
+      # 管理者マニュアル「資格情報管理」章を参照 (rabbitmqctl change_password 等)。
+      RABBITMQ_DEFAULT_USER: ${AMQP_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${AMQP_PASSWORD:-guest}
       TZ: ${TZ:-Asia/Tokyo}
     configs:
       - source: bootstrap-rabbitmq

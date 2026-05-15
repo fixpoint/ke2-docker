@@ -15,8 +15,8 @@ x-kompira-common-settings:
 
 x-kompira-common-environ:
   &kompira-common-environ
-  DATABASE_URL: ${DATABASE_URL:-pgsql://kompira:kompira@${DATABASE_HOST:-postgres}:5432/kompira}
-  AMQP_URL: ${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+  DATABASE_URL: ${DATABASE_URL:-pgsql://${DATABASE_USER:-kompira}:${DATABASE_PASSWORD:-kompira}@${DATABASE_HOST:-postgres}:5432/${DATABASE_NAME:-kompira}}
+  AMQP_URL: ${AMQP_URL:-amqp://${AMQP_USER:-guest}:${AMQP_PASSWORD:-guest}@rabbitmq:5672}
   CACHE_URL: ${CACHE_URL:-redis://redis:6379}
   LANGUAGE_CODE: ${LANGUAGE_CODE:-ja}
   TZ: ${TZ:-Asia/Tokyo}
