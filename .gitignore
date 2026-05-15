@@ -1,4 +1,8 @@
 *.old
 docker-compose.custom*.yml
 /docker-compose*.yml
+# init-env.sh などで生成される .env はパスワードを含むため Git 管理対象外
+# (init-env.sh --force 時に作られるバックアップ .env.bak.<timestamp> も対象)
+**/.env
+**/.env.bak.*
 
