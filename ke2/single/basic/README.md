@@ -43,10 +43,16 @@ docker compose up するときに環境変数を指定することで、簡易�
 | 環境変数           | 備考                                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------------- |
 | `KOMPIRA_LOG_DIR`  | ログファイルの出力先ディレクトリ（未指定の場合は kompira_log ボリューム内に出力されます）   |
+| `POSTGRES_MAX_CONNECTIONS` | PostgreSQL の最大同時接続数（既定 100）。Web の同時処理数（uWSGI の processes×threads）を増やす場合は連動して引き上げてください |
+| `POSTGRES_SHARED_BUFFERS` | PostgreSQL の共有バッファサイズ（既定 128MB）                                          |
+| `POSTGRES_EFFECTIVE_CACHE_SIZE` | プランナのキャッシュサイズ見積り（既定 4GB）                                     |
+| `POSTGRES_WORK_MEM` | クエリ毎のソート/ハッシュ作業メモリ（既定 4MB）                                            |
+| `POSTGRES_MAINTENANCE_WORK_MEM` | VACUUM・インデックス作成の作業メモリ（既定 64MB）                                |
 
 カスタマイズ例: 
 
     $ KOMPIRA_LOG_DIR=/var/log/kompira docker compose up -d
+    $ POSTGRES_MAX_CONNECTIONS=200 POSTGRES_SHARED_BUFFERS=512MB docker compose up -d
 
 ### 詳細なカスタマイズ
 
