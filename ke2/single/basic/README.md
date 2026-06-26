@@ -48,11 +48,22 @@ docker compose up するときに環境変数を指定することで、簡易�
 | `POSTGRES_EFFECTIVE_CACHE_SIZE` | プランナのキャッシュサイズ見積り（既定 4GB）                                     |
 | `POSTGRES_WORK_MEM` | クエリ毎のソート/ハッシュ作業メモリ（既定 4MB）                                            |
 | `POSTGRES_MAINTENANCE_WORK_MEM` | VACUUM・インデックス作成の作業メモリ（既定 64MB）                                |
+| `UWSGI_PROCESSES`  | Web サーバ(uWSGI)のワーカプロセス数（既定 5、目安は CPU コア数）                             |
+| `UWSGI_THREADS`    | ワーカ1プロセスあたりのスレッド数（既定 1）。同時処理数 = processes×threads。.wait/.recv 多用時に増やす |
+| `UWSGI_LISTEN`     | uWSGI の listen バックログ（既定 100）                                                       |
+| `UWSGI_HARAKIRI`   | uWSGI のリクエストタイムアウト秒（既定 0=無効）                                              |
+| `UWSGI_THUNDER_LOCK` | スレッド併用時の accept 公平化（既定 false。threads を増やす場合は true 推奨）             |
+| `KOMPIRA_NGINX_UWSGI_TIMEOUT` | nginx→uWSGI のタイムアウト秒（既定 300）。.wait/.recv を長め timeout で使う場合は連動して延ばす |
+
+なお、同時処理数（`UWSGI_PROCESSES`×`UWSGI_THREADS`）を増やす場合は、同時 DB 接続が
+増えるため `POSTGRES_MAX_CONNECTIONS` も連動して引き上げてください
+（目安: `processes×threads + 余裕(~15) <= max_connections`）。
 
 カスタマイズ例: 
 
     $ KOMPIRA_LOG_DIR=/var/log/kompira docker compose up -d
     $ POSTGRES_MAX_CONNECTIONS=200 POSTGRES_SHARED_BUFFERS=512MB docker compose up -d
+    $ UWSGI_PROCESSES=8 UWSGI_THREADS=8 UWSGI_THUNDER_LOCK=true POSTGRES_MAX_CONNECTIONS=200 docker compose up -d
 
 ### 詳細なカスタマイズ
 

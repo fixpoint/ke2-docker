@@ -7,6 +7,8 @@ services:
       - NGINX_ENVSUBST_FILTER=^KOMPIRA
       - KOMPIRA_HOST=${KOMPIRA_HOST:-kompira}
       - KOMPIRA_PORT=${KOMPIRA_PORT:-8000}
+      # uwsgi タイムアウト(秒)。envsubst は ${VAR:-default} 非対応のため既定値はここで与える
+      - KOMPIRA_NGINX_UWSGI_TIMEOUT=${KOMPIRA_NGINX_UWSGI_TIMEOUT:-300}
     configs:
       # MEMO: /etc/nginx/templates/*.template は起動時に環境変数が展開されて /etc/nginx/conf.d/* に書き出される
       - source: nginx-config
