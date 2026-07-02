@@ -1,12 +1,39 @@
 services:
   postgres:
-    # MEMO: potgrsql のメジャーバージョンを変更するときは PGDATA 領域のボリューム名も変更すること
+    # MEMO: postgresql のメジャーバージョンを変更するときは PGDATA 領域のボリューム名も変更すること
     image: registry.hub.docker.com/library/postgres:16.3-alpine
     hostname: db-${HOSTNAME:?HOSTNAME must be set}
+    # PostgreSQL のチューニング項目を環境変数で調整可能にする。
+    # 既定値は postgres 16 の標準値なので、未指定なら従来挙動と同じ。
+    # シェル/.env でも docker-compose.override.yml の environment ブロックでも上書き可。
+    # [重要] uWSGI のワーカ並列度 (processes x threads) を上げると同時 DB 接続数が増えるため、
+    #        max_connections も連動して引き上げること。超過すると
+    #        "FATAL: sorry, too many clients already" で接続が拒否され、画面/API が 500 になる。
+    # 項目を追加する場合は environment に POSTGRES_<KEY> を足し、command にも
+    #        -c <key>="$$POSTGRES_<KEY>" を足す (例: max_wal_size 等)。
     environment:
       POSTGRES_PASSWORD: kompira
       POSTGRES_USER: kompira
       TZ: ${TZ:-Asia/Tokyo}
+      POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-4GB}
+      POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-4MB}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+    # command はコンテナ内シェルで環境変数を展開してから postgres を起動する。
+    # ($$ は compose のパース時置換を避けるエスケープ。これによりコンテナ実行時に
+    #  上記 environment の値=override.yml での上書きが反映される。
+    #  docker-entrypoint.sh 経由なので初回起動時の DB 初期化も従来どおり行われる)
+    command:
+      - sh
+      - -c
+      - >
+        exec docker-entrypoint.sh postgres
+        -c max_connections="$$POSTGRES_MAX_CONNECTIONS"
+        -c shared_buffers="$$POSTGRES_SHARED_BUFFERS"
+        -c effective_cache_size="$$POSTGRES_EFFECTIVE_CACHE_SIZE"
+        -c work_mem="$$POSTGRES_WORK_MEM"
+        -c maintenance_work_mem="$$POSTGRES_MAINTENANCE_WORK_MEM"
     volumes:
       - ${PGDATA:-kompira_pg16}:/var/lib/postgresql/data
 volumes:
