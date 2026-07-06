@@ -1,7 +1,11 @@
+# 外部 jobmngrd 構成では KE2.0 本体側で rabbitmqctl add_user により追加した
+# 専用ユーザ・パスワードを AMQP_URL に埋め込んで接続するため、AMQP_URL の指定は必須。
+# 未指定の場合は docker compose 起動時にエラーで停止する (サンプル値が暗黙に
+# 使われて認証失敗するのを防ぐ目的)。
 services:
   jobmngrd:
     logging:
       driver: local
     environment:
-      - AMQP_URL=${AMQP_URL:-amqps://kompira:kompira@${AMQP_HOST:-rabbitmq}:5671}
+      AMQP_URL: '${AMQP_URL:?AMQP_URL must be set: e.g., amqps://<user>:<password>@<rabbitmq-host>:5671}'
     restart: always
