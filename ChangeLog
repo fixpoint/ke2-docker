@@ -1,3 +1,9 @@
+2026-07-06  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* 各サービスの資格情報を個別の環境変数 (DATABASE_USER / DATABASE_PASSWORD / DATABASE_NAME / AMQP_USER / AMQP_PASSWORD) で指定可能にしました。既定値は従来値 (kompira / guest) のままなので、未指定なら従来挙動と同じです。(#98)
+
+	* single/extdb・cluster/swarm 構成では内部 postgres を起動しないため DATABASE_URL を、extra/jobmngrd 構成では外部の RabbitMQ に接続するため AMQP_URL を、それぞれ未指定時に docker compose 起動段階で即エラー停止するようにしました。サンプル値による暗黙の認証失敗を防ぐためです。(#98)
+
 2026-07-02  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* 標準シングル構成の PostgreSQL チューニング項目 (max_connections / shared_buffers / effective_cache_size / work_mem / maintenance_work_mem) を環境変数 POSTGRES_* で調整可能にしました。既定値は標準値のままです。(#100)
