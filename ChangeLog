@@ -1,3 +1,11 @@
+2026-07-02  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* 標準シングル構成の PostgreSQL チューニング項目 (max_connections / shared_buffers / effective_cache_size / work_mem / maintenance_work_mem) を環境変数 POSTGRES_* で調整可能にしました。既定値は標準値のままです。(#100)
+
+	* 標準シングル構成の uWSGI ワーカ並列度・タイムアウト系 (UWSGI_PROCESSES / UWSGI_THREADS / UWSGI_LISTEN / UWSGI_HARAKIRI / UWSGI_THUNDER_LOCK) を環境変数で調整可能にしました。既定値は従来挙動と同じです。高負荷時の .wait / .recv によるワーカ枯渇を緩和できます。同時処理数を上げる場合は POSTGRES_MAX_CONNECTIONS も連動して引き上げてください。(#100)
+
+	* nginx の uwsgi read/send タイムアウトを環境変数 KOMPIRA_NGINX_UWSGI_READ_TIMEOUT / KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT (各既定 300 秒) で個別に調整可能にしました。(#100)
+
 2026-02-20  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* create-cert.sh: Python 3.13 および厳格なSSL検証環境に対応しました。(#95)
