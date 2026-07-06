@@ -4,9 +4,9 @@ services:
     hostname: jm-${HOSTNAME:?HOSTNAME must be set}
     init: true
     environment:
-      DATABASE_URL: ${DATABASE_URL:-pgsql://kompira:kompira@${DATABASE_HOST:-postgres}:5432/kompira}
+      DATABASE_URL: ${DATABASE_URL:-pgsql://${DATABASE_USER:-kompira}:${DATABASE_PASSWORD:-kompira}@${DATABASE_HOST:-postgres}:5432/${DATABASE_NAME:-kompira}}
       CACHE_URL: ${CACHE_URL:-redis://redis:6379}
-      AMQP_URL: ${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+      AMQP_URL: ${AMQP_URL:-amqp://${AMQP_USER:-guest}:${AMQP_PASSWORD:-guest}@rabbitmq:5672}
       TZ: ${TZ:-Asia/Tokyo}
       LOGGING_NAME: jobmngrd
       LOGGING_STREAM: ${JOBMNGRD_LOGGING_STREAM:-${LOGGING_STREAM:-true}}

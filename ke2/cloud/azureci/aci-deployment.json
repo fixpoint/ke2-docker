@@ -201,7 +201,9 @@
               },
               "environmentVariables": [
                 { "name": "KOMPIRA_HOST", "value": "localhost" },
-                { "name": "KOMPIRA_PORT", "value": 8000 }
+                { "name": "KOMPIRA_PORT", "value": 8000 },
+                { "name": "KOMPIRA_NGINX_UWSGI_READ_TIMEOUT", "value": 300 },
+                { "name": "KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT", "value": 300 }
               ],
               "volumeMounts": [
                 {
