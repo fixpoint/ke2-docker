@@ -1,6 +1,34 @@
 # ke2-docker リリースノート
 
 ---
+## 2026/07/10 (2.0.5-latest)
+### 変更
+- 外部のデータベース/RabbitMQ に接続する構成で、その接続先 URL が未指定の場合に、docker compose の起動段階で即座にエラー停止するようにしました。
+    - single/extdb・cluster/swarm 構成: 外部のデータベースに接続するため DATABASE_URL の指定が必須
+    - extra/jobmngrd 構成: 外部の RabbitMQ に接続するため AMQP_URL の指定が必須
+- 各コンテナでのデータベース/RabbitMQ 接続の資格情報を個別の環境変数で指定可能にしました。
+    - DATABASE_USER: データベース接続ユーザ名 (既定: kompira)
+    - DATABASE_PASSWORD: データベース接続パスワード (既定: kompira)
+    - DATABASE_NAME: 接続するデータベース名 (既定: kompira)
+    - AMQP_USER: RabbitMQ (AMQP) 接続ユーザ名 (既定: guest)
+    - AMQP_PASSWORD: RabbitMQ (AMQP) 接続パスワード (既定: guest)
+- postgres コンテナの PostgreSQL チューニング項目を環境変数で調整可能にしました。
+    - POSTGRES_MAX_CONNECTIONS: 最大同時接続数 (max_connections) (既定: 100)
+    - POSTGRES_SHARED_BUFFERS: 共有バッファサイズ (shared_buffers) (既定: 128MB)
+    - POSTGRES_EFFECTIVE_CACHE_SIZE: プランナが想定する OS キャッシュ量 (effective_cache_size) (既定: 4GB)
+    - POSTGRES_WORK_MEM: ソート/ハッシュ等の作業メモリ (work_mem) (既定: 4MB)
+    - POSTGRES_MAINTENANCE_WORK_MEM: VACUUM 等の保守処理用作業メモリ (maintenance_work_mem) (既定: 64MB)
+- kompira コンテナの uWSGI ワーカ並列度・タイムアウト系を環境変数で調整可能にしました。同時処理数を上げる場合は POSTGRES_MAX_CONNECTIONS も連動して引き上げてください。
+    - UWSGI_PROCESSES: ワーカプロセス数 (既定: 5)
+    - UWSGI_THREADS: ワーカプロセスあたりのスレッド数。同時処理数 = processes × threads (既定: 1)
+    - UWSGI_LISTEN: リッスンキュー (backlog) の長さ (既定: 100)
+    - UWSGI_HARAKIRI: リクエスト処理のタイムアウト秒。0 で無効 (既定: 0)
+    - UWSGI_THUNDER_LOCK: thundering herd を抑止するロックの有効化 (既定: false)
+- nginx コンテナの uwsgi read/send タイムアウトを環境変数で調整可能にしました。
+    - KOMPIRA_NGINX_UWSGI_READ_TIMEOUT: uwsgi からの応答読み取りタイムアウト秒 (既定: 300)
+    - KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT: uwsgi へのリクエスト送信タイムアウト秒 (既定: 300)
+
+---
 ## 2026/03/06 (2.0.5-latest)
 ### 変更
 - create-cert.sh: Python 3.13 および厳格なSSL検証環境に対応しました。(#95)
