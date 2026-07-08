@@ -111,20 +111,11 @@ docker compose up するときに環境変数を指定することで、簡易�
 
     $ 環境変数=値... docker compose up -d
 
-この構成で指定できる環境変数を以下に示します。
-
-| 環境変数           | 備考                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`     | 外部データベースの接続 URL。**必須**。未指定の場合は起動時にエラー停止します                      |
-| `AMQP_USER`        | 内部 RabbitMQ コンテナのユーザ名（デフォルト: `guest`）                                           |
-| `AMQP_PASSWORD`    | 内部 RabbitMQ コンテナのパスワード（デフォルト: `guest`、本番運用前に変更を強く推奨）             |
-| `KOMPIRA_LOG_DIR`  | ログファイルの出力先ディレクトリ（未指定の場合は kompira_log ボリューム内に出力されます）         |
+この構成では、外部データベースへの接続情報として `DATABASE_URL` の指定が **必須** です（未指定の場合は `docker compose config` の段階でエラー停止します）。その他の環境変数は各構成で共通のため、[Environment.md](../../../Environment.md) を参照してください。
 
 カスタマイズ例:
 
     $ DATABASE_URL='pgsql://...' AMQP_PASSWORD='strong-pw' KOMPIRA_LOG_DIR=/var/log/kompira docker compose up -d
-
-> **AMQP の資格情報に URL 安全でない文字 (`@` `:` `/` `%` や空白等、RFC 3986 unreserved 以外の文字) を含めたい場合**: `AMQP_USER` / `AMQP_PASSWORD` から compose が `AMQP_URL` を組み立てる際は未エンコードのまま URL に埋め込まれるため、これらの変数には unreserved set (英数字と `-_.~`) のみを使用してください。予約文字を含めたい場合は、あらかじめパーセントエンコードした `AMQP_URL` を直接指定してください。この場合、AMQP_URL の userinfo をデコードするために KE2.0 コンテナイメージが **v2.0.5.post2 以降** である必要があります (v2.0.5.post1 以前のイメージではデコードされず認証に失敗します)。
 
 ### 詳細なカスタマイズ
 
