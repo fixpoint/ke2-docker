@@ -4,7 +4,7 @@
 以下では各構成で共通的な環境変数について示します。
 各構成で独自の環境変数が定義されている場合もありますので、それぞれの説明を参照してください。
 
-> **デフォルト値の位置付け**: 以下の表に示す `DATABASE_URL` / `AMQP_URL` / `CACHE_URL` 等のデフォルト値は **kompira コンテナイメージ自体の既定値** であり、docker compose を経由せずコンテナを直接動かす場合などに参照されるものです。**ke2-docker の compose ファイルでは別途上書きされており**、内部 `postgres` / `rabbitmq` / `redis` コンテナへの接続情報 (`DATABASE_USER` / `DATABASE_PASSWORD` / `DATABASE_NAME` / `AMQP_USER` / `AMQP_PASSWORD` から組み立てた URL、または利用者が指定した `DATABASE_URL` / `AMQP_URL`) が実際の接続先として使われます。
+> **デフォルト値の位置付け**: 以下の表に示す `DATABASE_URL` / `AMQP_URL` / `CACHE_URL` 等のデフォルト値は **kompira コンテナイメージ自体のデフォルト値** であり、docker compose を経由せずコンテナを直接動かす場合などに参照されるものです。**ke2-docker の compose ファイルでは別途上書きされており**、内部 postgres / rabbitmq / redis コンテナへの接続情報 (`DATABASE_USER` / `DATABASE_PASSWORD` / `DATABASE_NAME` / `AMQP_USER` / `AMQP_PASSWORD` から組み立てた URL、または利用者が指定した `DATABASE_URL` / `AMQP_URL`) が実際の接続先として使われます。
 
 | 環境変数名            | デフォルト                                          | 意味                       |
 |-----------------------|-----------------------------------------------------|----------------------------|
@@ -19,8 +19,13 @@
 | `TZ`                  | "Asia/Tokyo"                                        | タイムゾーン               |
 | `LANGUAGE_CODE`       | "ja"                                                | 言語設定                   |
 | `MAX_EXECUTOR_NUM`    | "0"                                                 | Executor の最大数          |
+| `KOMPIRA_LOG_DIR`     | (下記参照)                                          | ログ出力先ディレクトリ     |
 | `LOGGING_XXX`         | (下記参照)                                          | プロセスログの設定         |
 | `AUDIT_LOGGING_XXX`   | (下記参照)                                          | 監査ログの設定             |
+| `UWSGI_XXX`           | (下記参照)                                          | uWSGI の並列度・タイムアウト |
+| `KOMPIRA_NGINX_UWSGI_READ_TIMEOUT` | "300"                                  | nginx→uWSGI の read タイムアウト (秒) |
+| `KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT` | "300"                                  | nginx→uWSGI の send タイムアウト (秒) |
+| `POSTGRES_XXX`        | (下記参照)                                          | PostgreSQL のチューニング  |
 
 ## HOSTNAME
 
@@ -106,13 +111,15 @@ URL 安全でない文字を含むユーザ名・パスワード・DB 名を安�
 
 ## MAX_EXECUTOR_NUM
 
-Kompira エンジン上で動作する Executor プロセスの最大数を指定します。
-未設定または 0 を指定した場合は kengine コンテナの CPUコア数だけ Executor プロセスを起動します。
-なお、MAX_EXECUTOR_NUM を CPU コア数より多くしても、実行する Executor プロセス数は CPU コア数で抑えられます。
+Kompira エンジン (kengine) 上で動作する Executor プロセスの最大数を、**1 つの kengine あたり**で指定します。未設定または 0 の場合は、その kengine コンテナの CPU コア数に従います。明示的に上限を指定する場合は 1 以上の整数を指定してください。
 
-    プロセス数＝min(CPUコア数、MAX_EXECUTOR_NUM)
+1 つの kengine が起動する Executor 数は、その kengine の CPU コア数 (本値を指定した場合は CPU コア数と本値の小さい方) までです。さらに、**システム全体で動作する Executor の合計数は、導入されているライセンスで付与される最大 Executor 数に制限されます**。複数の kengine を動作させる構成 (Swarm など) では、各 kengine への割り当ては起動時にシステム全体の残り枠から配分されます。
 
-また、導入されているライセンスによっても実際に動作する Executor のプロセス数は制限されます。
+ジョブフローの並列実行数を増やしてスケールしたい場合は、ライセンスの購入とサーバリソース (CPU コア数・ノード) の増強で対応します。なお各 Executor は PostgreSQL への接続を 1 つ保持するため、Executor 数を増やす構成では接続先 PostgreSQL の最大接続数 (内部 postgres 構成では `POSTGRES_MAX_CONNECTIONS`、外部データベース構成では接続先 DB サーバ側で設定) の見積りにも反映してください。
+
+## KOMPIRA_LOG_DIR
+
+ログを保存する **ホスト側のディレクトリ** を指定します。指定するとコンテナ内の `/var/log/kompira` にバインドマウントされます。未指定の場合は、標準シングル構成・外部DBシングル構成では名前付きボリューム `kompira_log` に、Swarm 構成では共有ディレクトリ (`SHARED_DIR`) 配下の `log` ディレクトリに保存されます。(コンテナ内のログ出力パス自体は下記 `LOGGING_DIR` で指定します。)
 
 ## LOGGING_XXX / AUDIT_LOGGING_XXX
 
@@ -132,6 +139,7 @@ Kompira コンテナイメージにおけるプロセスログおよび監査ロ
     - デフォルトは 2 です。
 - `LOGGING_DIR` / `AUDIT_LOGGING_DIR`: ログの出力先ディレクトリを指定します。
     - デフォルトは "/var/log/kompira" です。標準的なデプロイ手順ではこのディレクトリはホストの kompira_log ボリュームにマウントされます。
+    - デフォルト (`/var/log/kompira`) から変更する場合は、変更先の出力ディレクトリがコンテナから書き込める形で用意されていることを確認してください。
 - `LOGGING_BACKUP`: ログローテート時に保存されるバックアップ数を指定します。
     - `LOGGING_BACKUP` のデフォルトは 7 です。
     - `AUDIT_LOGGING_BACKUP` のデフォルトは 365 です。
@@ -149,3 +157,46 @@ Kompira コンテナイメージにおけるプロセスログおよび監査ロ
 | "D"                 | 日                        |
 | "W0"-"W6"           | 曜日 (0=月曜)             |
 | "MIDNIGHT"          | 深夜0時                   |
+
+## UWSGI_XXX / KOMPIRA_NGINX_UWSGI_READ_TIMEOUT / KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT
+
+kompira コンテナで動作する uWSGI (アプリケーションサーバ) のワーカ並列度・タイムアウトと、その前段の nginx から uWSGI へのタイムアウトを指定します。いずれも未設定ならデフォルト値で動作するため、通常はそのままで構いません。
+
+| 環境変数名           | デフォルト | 意味                                          |
+|----------------------|-----------|-----------------------------------------------|
+| `UWSGI_PROCESSES`    | "5"       | uWSGI のワーカプロセス数 (目安は CPU コア数)   |
+| `UWSGI_THREADS`      | "1"       | 1 ワーカあたりのスレッド数。同時処理数 = processes × threads |
+| `UWSGI_LISTEN`       | "100"     | 接続待ち行列 (listen backlog) の長さ           |
+| `UWSGI_HARAKIRI`     | "0"       | リクエスト処理のタイムアウト秒 (0 で無効)      |
+| `UWSGI_THUNDER_LOCK` | "false"   | 複数ワーカ/スレッドでの接続受け付けの公平化    |
+| `KOMPIRA_NGINX_UWSGI_READ_TIMEOUT` | "300" | nginx→uWSGI の read タイムアウト秒        |
+| `KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT` | "300" | nginx→uWSGI の send タイムアウト秒        |
+
+以下のような場合に、環境変数の調整で改善できることがあります。
+
+- 高負荷でアクセスが全体的に遅い／同時処理数を上げたい → `UWSGI_PROCESSES` / `UWSGI_THREADS` / `UWSGI_THUNDER_LOCK`（あわせて `POSTGRES_MAX_CONNECTIONS` も連動）
+- 時間のかかる処理（大きなエクスポート・重いクエリなど）が完了前にタイムアウトで打ち切られてしまう → `KOMPIRA_NGINX_UWSGI_READ_TIMEOUT` / `KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT`
+- 想定を超えて長時間実行され続けるリクエストがワーカを占有し続けるのを、一定時間で強制的に打ち切りたい → `UWSGI_HARAKIRI`
+- 短時間に接続が集中して、接続が拒否される・つながりにくくなる → `UWSGI_LISTEN`
+- 大規模データ環境で、搭載メモリに合わせて PostgreSQL を追加調整したい → `POSTGRES_SHARED_BUFFERS` / `POSTGRES_EFFECTIVE_CACHE_SIZE` / `POSTGRES_WORK_MEM` など (下記 POSTGRES_XXX 参照)
+
+並列度 (`UWSGI_PROCESSES` × `UWSGI_THREADS`) を上げる場合は、同時 DB 接続数も増えるため `POSTGRES_MAX_CONNECTIONS` (下記参照) も連動して引き上げてください。不足すると "FATAL: sorry, too many clients already" で接続が拒否されます。(外部データベース構成では `POSTGRES_MAX_CONNECTIONS` は無効で、接続先 DB サーバの `max_connections` を調整します。)
+
+調整の考え方や設定値の見積りの詳細は、管理者マニュアル「環境変数」章を参照してください。
+
+## POSTGRES_XXX
+
+内部 postgres コンテナを持つ構成 (標準シングル構成) で、PostgreSQL の主要なチューニング項目を指定します。外部データベース構成 (single/extdb・cluster/swarm) では内部 postgres を起動しないため対象外で、チューニングは接続先の外部 DB サーバ側で行います。いずれも未設定なら PostgreSQL の標準値で動作します。
+
+| 環境変数名                      | デフォルト | 対応する postgres 設定      |
+|---------------------------------|-----------|-----------------------------|
+| `POSTGRES_MAX_CONNECTIONS`      | "100"     | `max_connections`           |
+| `POSTGRES_SHARED_BUFFERS`       | "128MB"   | `shared_buffers`            |
+| `POSTGRES_EFFECTIVE_CACHE_SIZE` | "4GB"     | `effective_cache_size`      |
+| `POSTGRES_WORK_MEM`             | "4MB"     | `work_mem`                  |
+| `POSTGRES_MAINTENANCE_WORK_MEM` | "64MB"    | `maintenance_work_mem`      |
+
+- `POSTGRES_MAX_CONNECTIONS`: 受け付ける最大同時接続数です。上記の Web ワーカ並列度と連動して設定します。
+- メモリ関連パラメータ (`POSTGRES_SHARED_BUFFERS` / `POSTGRES_EFFECTIVE_CACHE_SIZE` / `POSTGRES_WORK_MEM` / `POSTGRES_MAINTENANCE_WORK_MEM`) は、ホストの搭載メモリを基準に決めます。
+
+各パラメータの詳細・見積りは、管理者マニュアル「環境変数」章および PostgreSQL のドキュメントを参照してください。

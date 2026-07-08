@@ -23,7 +23,7 @@
     - UWSGI_THREADS: ワーカプロセスあたりのスレッド数。同時処理数 = processes × threads (既定: 1)
     - UWSGI_LISTEN: リッスンキュー (backlog) の長さ (既定: 100)
     - UWSGI_HARAKIRI: リクエスト処理のタイムアウト秒。0 で無効 (既定: 0)
-    - UWSGI_THUNDER_LOCK: thundering herd を抑止するロックの有効化 (既定: false)
+    - UWSGI_THUNDER_LOCK: 複数ワーカ/スレッドへの接続を公平に振り分ける。threads を増やす場合は有効化を推奨 (既定: false)
 - nginx コンテナの uwsgi read/send タイムアウトを環境変数で調整可能にしました。
     - KOMPIRA_NGINX_UWSGI_READ_TIMEOUT: uwsgi からの応答読み取りタイムアウト秒 (既定: 300)
     - KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT: uwsgi へのリクエスト送信タイムアウト秒 (既定: 300)
