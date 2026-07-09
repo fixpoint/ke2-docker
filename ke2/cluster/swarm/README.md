@@ -407,9 +407,11 @@ setup_stack.sh を実行するときに環境変数を指定することで、�
 | 環境変数           | 備考                                                                                        |
 | ------------------ | ------------------------------------------------------------------------------------------- |
 | `SHARED_DIR`       | 共有ディレクトリ（各ノードからアクセスできる必要があります）                                |
-| `DATABASE_URL`     | 外部データベース                                                                            |
+| `DATABASE_URL`     | 外部データベース (構築した Pgpool-II クラスタ) への接続 URL。未指定時は `DATABASE_HOST`（デフォルト: `host.docker.internal`）からデフォルト値を構築します |
 | `KOMPIRA_LOG_DIR`  | ログファイルの出力先ディレクトリ（未指定の場合は `${SHARED_DIR}/log` に出力されます）       |
-| `NGINX_PORT_MODE`  | Nginx の公開ポートモード (`host`、`ingress`) の設定（デフォルト: `ingress`） <br />`ingress`: HTTP(S) アクセスはクラスタを構成する各ホスト上の nginx コンテナに負荷分散されます。<br />`host`: HTTP(S) アクセスは URL で指定されたホスト上で動作する nginx コンテナが受信します。|                                                                  
+| `NGINX_PORT_MODE`  | nginx の公開ポートモード (`host`、`ingress`) の設定（デフォルト: `ingress`） <br />`ingress`: HTTP(S) アクセスはクラスタを構成する各ホスト上の nginx コンテナに負荷分散されます。<br />`host`: HTTP(S) アクセスは URL で指定されたホスト上で動作する nginx コンテナが受信します。|                                                                  
+
+これらは本構成に固有、またはデフォルト値が本構成固有の環境変数です。その他の共通の環境変数は [Environment.md](../../../Environment.md) を参照してください。
 
 カスタマイズ例: 
 
