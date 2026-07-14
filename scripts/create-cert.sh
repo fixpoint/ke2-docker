@@ -11,11 +11,20 @@
 # SSL証明書には SAN (subjectAltName) 拡張情報を付与します
 #
 set -eu
-BASE_DIR=$(dirname $(dirname $(readlink -f $0)))
+
+# Git Bash / MSYS2 では docker への引数中の絶対パス (コンテナ側の /kompira-ssl 等) が
+# Windows パスへ誤変換され、コンテナ内の出力先が壊れる。該当環境ではパス変換を無効化する。
+# (Linux/macOS/WSL2 では uname が一致しないため no-op)
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' ;;
+esac
+
+SELF_DIR=$(cd "$(dirname "$0")" && pwd)
+BASE_DIR=$(dirname "$SELF_DIR")
 
 # CA 証明書パラメータ
 : ${CA_NAME:=local-ca}
-: ${CA_SUBJECT:="/CN=Kompira local CA ($(hostname -s))"}
+: ${CA_SUBJECT:="/CN=Kompira local CA ($(hostname -s 2>/dev/null || hostname))"}
 : ${CA_DAYS:=3650}
 : ${CA_KEYTYPE:="rsa:2048"}
 
@@ -39,7 +48,7 @@ DOCKER_RUN="docker run --rm --name create-cert -u $LOCAL_UID:$LOCAL_GID"
 # openssl コマンドを実行できるコンテナイメージ (rabbitmq) の確認
 : ${IMAGE:=$(docker images --format="{{.ID}}:{{.Repository}}" | grep -w rabbitmq | head -1 | cut -d: -f1)}
 if [ -z "$IMAGE" ]; then
-    IMAGE=$(grep "image:" $BASE_DIR/ke2/services/rabbitmq_ssl.yml | sed -re 's/\s*image: //')
+    IMAGE=$(grep -E '^[[:space:]]*image:' "$BASE_DIR/ke2/services/rabbitmq.yml" | head -1 | sed -e 's/^[[:space:]]*image:[[:space:]]*//')
     echo "Pull docker image: $IMAGE"
     docker pull "$IMAGE"
     IMAGE=$(docker images --format="{{.ID}}:{{.Repository}}" | grep -w rabbitmq | head -1 | cut -d: -f1)

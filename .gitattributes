@@ -1,0 +1,3 @@
+# Windows (core.autocrlf=true) で clone してもコンテナ内で消費されるシェル/設定ファイルが
+# CRLF で壊れないよう、テキストは作業ツリーでも LF に正規化する。バイナリは text=auto が自動除外。
+* text=auto eol=lf
