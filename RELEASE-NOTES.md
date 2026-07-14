@@ -43,6 +43,9 @@
     - reload-cert.sh を非対話 (非 TTY) 実行でも動作するように改善しました。
     - .gitattributes を追加して改行コードを LF に正規化しました。
 
+### アップデート時の注意
+- cluster/swarm 構成を更新する場合は、git pull などでリポジトリを更新した後に、**必ず setup_stack.sh を再実行して docker-swarm.yml を作り直してから docker stack deploy してください**。以前生成した古い docker-swarm.yml を使い回すと、更新後の設定ファイル (configs/) と環境変数が不整合になり、一部のコンテナが正しく起動しない、または変更した設定が反映されないことがあります。また setup_stack.sh はその時点の環境変数から docker-swarm.yml を生成するため、**初回構築や前回までのアップデートで指定した環境変数を今回も指定してください** (省略すると DATABASE_URL・資格情報・チューニング系などが既定値に戻ります)。
+
 ---
 ## 2026/03/06 (2.0.5-latest)
 ### 変更
