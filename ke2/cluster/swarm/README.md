@@ -397,6 +397,13 @@ Kompira Enterprise を停止するには以下のコマンドを実行します�
 
 	$ docker stack rm ke2
 
+## 更新時の注意
+
+ke2-docker を更新 (git pull など) した後に再デプロイする場合は、以下に注意してください。
+
+- git pull などでリポジトリを更新した後、`docker stack deploy` の前に必ず `setup_stack.sh` を再実行して `docker-swarm.yml` を作り直してください。以前生成した古い `docker-swarm.yml` を使い回すと、更新後の設定ファイル (`configs/`) と環境変数が不整合になり、一部のコンテナが正しく起動しない、または変更した設定が反映されないことがあります。
+- `setup_stack.sh` はその時点の環境変数から `docker-swarm.yml` を生成するため、初回構築や前回までのアップデートで指定していた環境変数を今回も指定してください (省略すると `DATABASE_URL`・資格情報・チューニング系などが既定値に戻ります)。
+
 ## カスタマイズ
 ### 環境変数によるカスタマイズ
 
