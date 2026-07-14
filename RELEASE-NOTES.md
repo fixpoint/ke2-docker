@@ -1,7 +1,7 @@
 # ke2-docker リリースノート
 
 ---
-## 2026/07/10 (2.0.5-latest)
+## 2026/07/17 (2.0.5-latest)
 ### 変更
 - 外部のデータベース/RabbitMQ に接続する構成で、その接続先 URL が未指定の場合に、docker compose の起動段階で即座にエラー停止するようにしました。
     - single/extdb・cluster/swarm 構成: 外部のデータベースに接続するため DATABASE_URL の指定が必須
@@ -27,6 +27,21 @@
 - nginx コンテナの uwsgi read/send タイムアウトを環境変数で調整可能にしました。
     - KOMPIRA_NGINX_UWSGI_READ_TIMEOUT: uwsgi からの応答読み取りタイムアウト秒 (既定: 300)
     - KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT: uwsgi へのリクエスト送信タイムアウト秒 (既定: 300)
+
+### 修正
+- cluster/swarm 構成の setup_stack.sh について、エラーになる場合がある問題の修正と堅牢性の改善を行ないました。
+    - 共有ディレクトリ (SHARED_DIR) が root など実行ユーザ以外の所有でも SSL 証明書のコピーが失敗しないようにしました。
+    - 非対話シェルで HOSTNAME 未設定でも docker-swarm.yml を生成できるようにしました。
+    - SHARED_DIR 未指定時や SSL 未生成時には分かりやすいエラーで停止するようにしました。
+- create-cert.sh について、コンテナイメージ取得まわりの不具合の修正と堅牢化を行ないました。
+    - ローカルに rabbitmq イメージが無い場合に、fallback が存在しないファイルを参照して失敗する不具合を修正しました。
+    - コンテナイメージ参照 (image 行) の抽出処理を堅牢化しました。
+
+### その他
+- ホスト実行スクリプトについて、互換性および堅牢性の改善を行ないました。
+    - create-cert.sh のパス解決や sed / hostname の呼び出しを互換性の高い形に改善しました。
+    - reload-cert.sh を非対話 (非 TTY) 実行でも動作するように改善しました。
+    - .gitattributes を追加して改行コードを LF に正規化しました。
 
 ---
 ## 2026/03/06 (2.0.5-latest)
