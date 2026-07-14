@@ -1,5 +1,7 @@
 2026-07-14  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
+	* ホスト実行スクリプトの互換性・堅牢性を向上しました。create-cert.sh のパス解決や sed / hostname の呼び出しを移植性の高い形に改め、コンテナイメージ取得の fallback が参照するファイル名の誤り (存在しない rabbitmq_ssl.yml を rabbitmq.yml に修正) と image 行抽出の堅牢化を行いました。また reload-cert.sh を非対話 (非 TTY) 実行でも動作するようにし、.gitattributes を追加して改行コードを LF に正規化しています。(crossplatform-single-trial)
+
 	* cluster/swarm 構成の setup_stack.sh を、実機構築で判明した失敗要因・移植性の問題について修正しました。共有ディレクトリ (SHARED_DIR) が root など実行ユーザ以外の所有でも SSL 証明書のコピーが失敗しないようにし (cp --preserve=mode)、非対話シェルで HOSTNAME 未設定でも docker-swarm.yml を生成できるよう補完し、SHARED_DIR 未指定時や SSL 未生成時には分かりやすいエラーで停止するようにしました。あわせて pipefail の追加・エラー出力の統一・シェバンの明示化 (#!/bin/bash) を行っています。(setup-stack-ssl-hostname)
 
 2026-07-06  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
