@@ -2,3 +2,7 @@
 docker-compose.custom*.yml
 /docker-compose*.yml
 
+# 各構成の .env はパスワードを含むため Git 管理対象外
+**/.env
+**/.env.bak.*
+
