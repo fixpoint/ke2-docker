@@ -27,6 +27,48 @@
 | `KOMPIRA_NGINX_UWSGI_SEND_TIMEOUT` | "300"                                  | nginx→uWSGI の send タイムアウト (秒) |
 | `POSTGRES_XXX`        | (下記参照)                                          | PostgreSQL のチューニング  |
 
+## 環境変数の指定方法
+
+環境変数は、docker compose コマンドの前に指定するか、構成ディレクトリ直下の `.env` ファイルに記述して指定します。
+
+    $ DATABASE_URL='pgsql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:<DB_PORT>/<DB_NAME>' docker compose up -d
+
+### 必須の環境変数
+
+外部のサブシステムに接続する以下の構成では、接続先を示す環境変数の指定が **必須** です。未指定の場合は、サンプル値による暗黙の認証失敗を防ぐため即座にエラー停止します。
+
+| 構成                | 必須の環境変数 | 補足                                   |
+|---------------------|----------------|----------------------------------------|
+| `ke2/single/extdb`  | `DATABASE_URL` | 内部 postgres コンテナを起動しないため |
+| `ke2/extra/jobmngrd`| `AMQP_URL`     | 外部の RabbitMQ に接続するため         |
+
+`ke2/single/basic` には必須の環境変数はありません。`ke2/cluster/swarm` も外部データベースを前提とする構成ですが、接続先の要否判定は `setup_stack.sh` が行なうため (未指定なら `DATABASE_HOST` から既定値を組み立て、いずれも無ければエラー停止します)、compose ファイル側では必須にしていません。
+
+> **注意: 必須の環境変数は `up` だけでなくすべての docker compose コマンドで必要です。** docker compose は compose ファイルを読み込む時点で環境変数を展開するため、`pull` / `config` / `down` / `ps` / `logs` などいずれのコマンドでも、未指定であれば同じエラーで停止します。たとえばコンテナイメージを取得するだけの `docker compose pull` でも指定が必要です (実際にデータベースやメッセージキューへ接続しているわけではなく、compose ファイルの読み込み段階で停止しています)。
+>
+>     $ docker compose pull
+>     error while interpolating x-required-db-env.DATABASE_URL: required variable DATABASE_URL is missing a value: DATABASE_URL must be set. It is required by every docker compose command ...
+>
+> コマンドごとに指定するのは煩雑なため、これらの構成では後述の `.env` ファイルによる指定を推奨します。
+
+### .env ファイルによる指定
+
+構成ディレクトリ直下に `.env` ファイルを置くと、そのディレクトリで実行する docker compose コマンドすべてに自動的に適用されます。必須の環境変数を持つ構成では、セットアップの最初に `.env` を用意しておくとコマンドごとの指定が不要になります。
+
+    $ cd ke2/single/extdb
+    $ cat .env
+    DATABASE_URL=pgsql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:<DB_PORT>/<DB_NAME>
+
+記述にあたっては以下の点に注意してください。シェルではなく docker compose がこのファイルを解釈するため、コマンド前置きでの指定とは扱いが異なる部分があります。
+
+- 値をクオートで囲む必要はありません。囲んだ場合、クオート自体は値に含まれません。
+- 値に `$` を含む場合は、変数の参照として展開されてしまうため、`$$` と書くか、値全体をシングルクオートで囲んでください。
+- 値の後ろに空白を挟んで `#` を書くと、それ以降はコメントとして無視されます。
+- URL 安全でない文字を含む資格情報のパーセントエンコードは、コマンド前置きでの指定と同様に必要です (後述の「URL 安全でない文字を含む資格情報の扱い」を参照)。パーセントエンコードしておけば、上記の `$` や `#` の注意も該当しなくなります。
+- パスワードを平文で含むため、`chmod 600 .env` などでパーミッションを制限してください (`.env` は Git の管理対象外にしています)。
+
+`.env` は構築時に指定したパラメータの記録にもなります。アップデート手順 (`docker compose down` → `pull` → `up -d`) でもそのまま参照されるため、環境変数を再指定する必要がなくなります。
+
 ## HOSTNAME
 
 デプロイする各コンテナには、ホストサーバのホスト名をベースにしたホスト名を内部的に付与するようにしています。

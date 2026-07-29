@@ -23,16 +23,25 @@ KE2.0 の外部に jobmngrd だけを配置する構成の Docker Compose ファ
 
     $ cd ke2/extra/jobmngrd
 
-まず、コンテナイメージの取得を行なうために、以下のコマンドを実行します。
+まず、KE2.0 が動作しているシステムの rabbitmq に接続するための `AMQP_URL` を、以下の内容で `.env` ファイルに記述します。ユーザ名・パスワードは上で rabbitmq に追加した値を指定してください。
+
+    AMQP_URL=amqps://<AMQP_USER>:<AMQP_PASSWORD>@<RABBITMQ_HOST>:5671
+
+この構成では `AMQP_URL` の指定が **必須** で、`up` だけでなく `pull` を含むすべての docker compose コマンドで必要です (未指定の場合はいずれのコマンドも即エラー停止します)。`.env` に記述しておくと、このディレクトリで実行する docker compose コマンドすべてに適用されるため、コマンドごとに指定する必要がなくなります。パスワードを平文で含むため、`chmod 600 .env` などでパーミッションを制限してください。`.env` の書式や注意点については [Environment.md](../../../Environment.md) の「環境変数の指定方法」を参照してください。
+
+次に、コンテナイメージの取得を行なうために、以下のコマンドを実行します。
 
     $ docker compose pull
 
 続けて、以下のコマンドを実行して外部 jobmngrd を開始をします。
 
-    $ AMQP_URL=... docker compose up -d
-
-このとき KE2.0 が動作しているシステムの rabbitmq に接続できるように、rabbitmq に追加したユーザやパスワードに合わせて AMQP_URL を指定してください。
-
-    $ AMQP_URL=amqps://kompira:kompira@{{rabbitmqのアドレス}}:5671 docker compose up -d
+    $ docker compose up -d
 
 ブラウザで KE2.0 の「管理領域設定 > デフォルト」 (/config/realms/default) を確認して、「ジョブマネージャ状態」一覧にこのホストがステータス「動作中」として表示されていれば、外部 jobmngrd 構成のセットアップは成功です。
+
+### 参考: `.env` を使わない場合
+
+`.env` を用意せずに、コマンドごとに `AMQP_URL` を指定することもできます。この場合は `up` だけでなく、`pull` など他の docker compose コマンドを実行するときにも毎回指定する必要があります。
+
+    $ AMQP_URL='amqps://<AMQP_USER>:<AMQP_PASSWORD>@<RABBITMQ_HOST>:5671' docker compose pull
+    $ AMQP_URL='amqps://<AMQP_USER>:<AMQP_PASSWORD>@<RABBITMQ_HOST>:5671' docker compose up -d
