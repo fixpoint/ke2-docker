@@ -5,7 +5,9 @@ x-logging:
   #   tag: "docker.{{.Name}}"
 
 # 外部DB構成では postgres コンテナを起動しないため、DATABASE_URL の指定を必須とする。
-# 未指定の場合は docker compose up 時にエラーで停止する。
+# compose は変数をファイル読み込み時に展開するため、未指定の場合は up だけでなく
+# pull / config / down など、この構成ディレクトリで実行するすべての docker compose
+# コマンドがエラーで停止する。
 x-required-db-env: &required-db-env
   DATABASE_URL: '${DATABASE_URL:?DATABASE_URL must be set: e.g., pgsql://user:password@host:5432/dbname}'
 

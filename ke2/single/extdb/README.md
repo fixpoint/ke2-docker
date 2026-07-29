@@ -85,7 +85,13 @@ postgresql.conf (RHEL系標準パッケージをインストールした場合�
 
     $ cd ke2/single/extdb
 
-まず、コンテナイメージの取得と SSL 証明書の生成を行なうために、以下のコマンドを実行します。
+まず、先に準備した接続情報を反映した `DATABASE_URL` を、以下の内容で `.env` ファイルに記述します。
+
+    DATABASE_URL=pgsql://<DB ユーザ名>:<DB パスワード>@<DB ホストの IP>:<ポート番号>/<データベース名>
+
+この構成では `DATABASE_URL` の指定が **必須** で、`up` だけでなく `pull` を含むすべての docker compose コマンドで必要です (未指定の場合はいずれのコマンドも即エラー停止します)。`.env` に記述しておくと、このディレクトリで実行する docker compose コマンドすべてに適用されるため、コマンドごとに指定する必要がなくなります。パスワードを平文で含むため、`chmod 600 .env` などでパーミッションを制限してください。`.env` の書式や注意点については [Environment.md](../../../Environment.md) の「環境変数の指定方法」を参照してください。
+
+次に、コンテナイメージの取得と SSL 証明書の生成を行なうために、以下のコマンドを実行します。
 
     $ docker compose pull
     $ ../../../scripts/create-cert.sh
@@ -100,8 +106,14 @@ Kompira 用データベースを新規に構築する場合は、たとえば以
     $ echo -n 'xxxxxxxxxxxxxxxx' > .secret_key
 
 続けて、以下のコマンドを実行して Kompira Enterprise 開始をします。
-このとき先に準備した接続情報を反映した DATABASE_URL を **必ず指定** してください。未指定で起動した場合は `docker compose config` の段階で即エラー停止します。
 
+    $ docker compose up -d
+
+### 参考: `.env` を使わない場合
+
+`.env` を用意せずに、コマンドごとに `DATABASE_URL` を指定することもできます。この場合は `up` だけでなく、`pull` など他の docker compose コマンドを実行するときにも毎回指定する必要があります。
+
+    $ DATABASE_URL='pgsql://<DB ユーザ名>:<DB パスワード>@<DB ホストの IP>:<ポート番号>/<データベース名>' docker compose pull
     $ DATABASE_URL='pgsql://<DB ユーザ名>:<DB パスワード>@<DB ホストの IP>:<ポート番号>/<データベース名>' docker compose up -d
 
 ## カスタマイズ
@@ -111,11 +123,15 @@ docker compose up するときに環境変数を指定することで、簡易�
 
     $ 環境変数=値... docker compose up -d
 
-この構成では、外部データベースへの接続情報として `DATABASE_URL` の指定が **必須** です（未指定の場合は `docker compose config` の段階でエラー停止します）。その他の環境変数は各構成で共通のため、[Environment.md](../../../Environment.md) を参照してください。
+この構成では、外部データベースへの接続情報として `DATABASE_URL` の指定が **必須** です（未指定の場合は `pull` を含むすべての docker compose コマンドがエラー停止します）。その他の環境変数は各構成で共通のため、[Environment.md](../../../Environment.md) を参照してください。カスタマイズした環境変数も `.env` に記述しておくことができます。
 
-カスタマイズ例:
+カスタマイズ例 (「Kompira Enterpise の開始」で `DATABASE_URL` を `.env` に設定済みである前提):
 
-    $ DATABASE_URL='pgsql://...' AMQP_PASSWORD='strong-pw' KOMPIRA_LOG_DIR=/var/log/kompira docker compose up -d
+    $ AMQP_PASSWORD='strong-pw' KOMPIRA_LOG_DIR=/var/log/kompira docker compose up -d
+
+`.env` を使わない場合は、上記に加えて `DATABASE_URL` も毎回指定する必要があります。
+
+    $ DATABASE_URL='pgsql://<DB ユーザ名>:<DB パスワード>@<DB ホストの IP>:<ポート番号>/<データベース名>' AMQP_PASSWORD='strong-pw' KOMPIRA_LOG_DIR=/var/log/kompira docker compose up -d
 
 ### 詳細なカスタマイズ
 
@@ -129,6 +145,8 @@ docker compose up するときに環境変数を指定することで、簡易�
     $ KOMPIRA_LOG_DIR=/var/log/kompira docker compose config -o docker-compose.custom.yml
 
 docker-compose.custom.yml という YAML ファイルが作成されますので、目的に合わせてカスタマイズしてください。
+なお、このファイルには展開後の環境変数がそのまま書き出されるため、`DATABASE_URL` に含まれるパスワードも平文で記録されます。`.env` と同様に `chmod 600 docker-compose.custom.yml` などでパーミッションを制限してください。
+
 このファイルを用いてシステムを開始する場合は、以下のコマンドを実行してください。
 
     $ docker compose -f docker-compose.custom.yml up -d
