@@ -1,3 +1,9 @@
+2026-07-29  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
+
+	* cluster/swarm 構成における DATABASE_URL の必須化 (compose ファイルでの :? 指定) を取り止めました。本構成では setup_stack.sh が DATABASE_URL の要否判定 (未指定なら DATABASE_HOST から既定値を組み立て、いずれも無ければエラー停止) を行なった上で docker-swarm.yml を生成するため、compose ファイル側の必須化は重複しており、README の環境変数表の記述 (未指定時は DATABASE_HOST から構築) とも矛盾していました。また docker stack deploy には用いない docker compose pull まで停止させていました。single/extdb・extra/jobmngrd は内部コンテナ向けの既定値に暗黙にフォールバックすると分かりにくい失敗になるため、これまでどおり必須のままとします。(#109)
+
+	* 接続先 URL を必須としている構成 (single/extdb の DATABASE_URL、extra/jobmngrd の AMQP_URL) について、これらの環境変数が up だけでなく pull を含むすべての docker compose コマンドで必要になることを説明していませんでした。Environment.md に「環境変数の指定方法」の節を新設して必須の環境変数の一覧・全コマンドで必要になる理由・.env ファイルによる指定方法をまとめ、各構成の README ではセットアップ手順の先頭で .env を用意する流れに改めました。未指定時のエラーメッセージにも、全コマンドで必要になることと .env による指定の案内を含めています。あわせて .env を Git 管理対象外にしています。(#109)
+
 2026-07-14  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
 	* ホスト実行スクリプトの互換性・堅牢性を向上しました。create-cert.sh のパス解決や sed / hostname の呼び出しを移植性の高い形に改め、コンテナイメージ取得の fallback が参照するファイル名の誤り (存在しない rabbitmq_ssl.yml を rabbitmq.yml に修正) と image 行抽出の堅牢化を行いました。また reload-cert.sh を非対話 (非 TTY) 実行でも動作するようにし、.gitattributes を追加して改行コードを LF に正規化しています。(crossplatform-single-trial)
