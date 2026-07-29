@@ -9,7 +9,7 @@ x-logging:
 # pull / config / down など、この構成ディレクトリで実行するすべての docker compose
 # コマンドがエラーで停止する。
 x-required-db-env: &required-db-env
-  DATABASE_URL: '${DATABASE_URL:?DATABASE_URL must be set: e.g., pgsql://user:password@host:5432/dbname}'
+  DATABASE_URL: '${DATABASE_URL:?DATABASE_URL must be set. It is required by every docker compose command (pull, config, up, down, ...), not only up. Recommended - write it in the .env file in this directory (e.g. DATABASE_URL=pgsql://user:password@host:5432/dbname). See Environment.md for details}'
 
 services:
   redis:

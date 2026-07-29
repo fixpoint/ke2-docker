@@ -8,5 +8,5 @@ services:
     logging:
       driver: local
     environment:
-      AMQP_URL: '${AMQP_URL:?AMQP_URL must be set: e.g., amqps://<user>:<password>@<rabbitmq-host>:5671}'
+      AMQP_URL: '${AMQP_URL:?AMQP_URL must be set. It is required by every docker compose command (pull, config, up, down, ...), not only up. Recommended - write it in the .env file in this directory (e.g. AMQP_URL=amqps://user:password@rabbitmq-host:5671). See Environment.md for details}'
     restart: always

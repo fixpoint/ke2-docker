@@ -47,7 +47,7 @@
 > **注意: 必須の環境変数は `up` だけでなくすべての docker compose コマンドで必要です。** docker compose は compose ファイルを読み込む時点で環境変数を展開するため、`pull` / `config` / `down` / `ps` / `logs` などいずれのコマンドでも、未指定であれば同じエラーで停止します。たとえばコンテナイメージを取得するだけの `docker compose pull` でも指定が必要です (実際にデータベースやメッセージキューへ接続しているわけではなく、compose ファイルの読み込み段階で停止しています)。
 >
 >     $ docker compose pull
->     error while interpolating x-required-db-env.DATABASE_URL: required variable DATABASE_URL is missing a value: DATABASE_URL must be set: ...
+>     error while interpolating x-required-db-env.DATABASE_URL: required variable DATABASE_URL is missing a value: DATABASE_URL must be set. It is required by every docker compose command ...
 >
 > コマンドごとに指定するのは煩雑なため、これらの構成では後述の `.env` ファイルによる指定を推奨します。
 
