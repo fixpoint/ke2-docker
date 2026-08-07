@@ -1,0 +1,227 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CloudFormation template with prefix KE2EFSFUP for all resources. It creates a VPC with a public subnet, Internet Gateway, Route Table, and Security Groups. It then creates a mount target for an existing EFS file system, and launches an EC2 instance that mounts the EFS file system.",
+    "Parameters": {
+      "KeyName": {
+        "Description": "Name of an existing EC2 KeyPair for SSH access.",
+        "Type": "AWS::EC2::KeyPair::KeyName"
+      },
+      "InstanceType": {
+        "Description": "EC2 instance type.",
+        "Type": "String",
+        "Default": "t2.micro"
+      },
+      "InstanceImageId": {
+        "Description": "EC2 instance image ID.",
+        "Type": "AWS::EC2::Image::Id"
+      },
+      "EFSFileSystemId": {
+        "Description": "The ID of the existing EFS file system to mount.",
+        "Type": "String"
+      }
+    },
+    "Resources": {
+      "KE2EFSFUPVPC": {
+        "Type": "AWS::EC2::VPC",
+        "Properties": {
+          "CidrBlock": "10.0.0.0/16",
+          "EnableDnsSupport": true,
+          "EnableDnsHostnames": true,
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "KE2EFSFUPVPC"
+            }
+          ]
+        }
+      },
+      "KE2EFSFUPInternetGateway": {
+        "Type": "AWS::EC2::InternetGateway",
+        "Properties": {
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "KE2EFSFUPInternetGateway"
+            }
+          ]
+        }
+      },
+      "KE2EFSFUPVPCGatewayAttachment": {
+        "Type": "AWS::EC2::VPCGatewayAttachment",
+        "Properties": {
+          "VpcId": {
+            "Ref": "KE2EFSFUPVPC"
+          },
+          "InternetGatewayId": {
+            "Ref": "KE2EFSFUPInternetGateway"
+          }
+        }
+      },
+      "KE2EFSFUPPublicSubnet": {
+        "Type": "AWS::EC2::Subnet",
+        "Properties": {
+          "VpcId": {
+            "Ref": "KE2EFSFUPVPC"
+          },
+          "CidrBlock": "10.0.1.0/24",
+          "MapPublicIpOnLaunch": true,
+          "AvailabilityZone": {
+            "Fn::Select": [
+              "0",
+              {
+                "Fn::GetAZs": ""
+              }
+            ]
+          },
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "KE2EFSFUPPublicSubnet"
+            }
+          ]
+        }
+      },
+      "KE2EFSFUPPublicRouteTable": {
+        "Type": "AWS::EC2::RouteTable",
+        "Properties": {
+          "VpcId": {
+            "Ref": "KE2EFSFUPVPC"
+          },
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "KE2EFSFUPPublicRouteTable"
+            }
+          ]
+        }
+      },
+      "KE2EFSFUPPublicRoute": {
+        "Type": "AWS::EC2::Route",
+        "DependsOn": "KE2EFSFUPVPCGatewayAttachment",
+        "Properties": {
+          "RouteTableId": {
+            "Ref": "KE2EFSFUPPublicRouteTable"
+          },
+          "DestinationCidrBlock": "0.0.0.0/0",
+          "GatewayId": {
+            "Ref": "KE2EFSFUPInternetGateway"
+          }
+        }
+      },
+      "KE2EFSFUPSubnetRouteTableAssociation": {
+        "Type": "AWS::EC2::SubnetRouteTableAssociation",
+        "Properties": {
+          "SubnetId": {
+            "Ref": "KE2EFSFUPPublicSubnet"
+          },
+          "RouteTableId": {
+            "Ref": "KE2EFSFUPPublicRouteTable"
+          }
+        }
+      },
+      "KE2EFSFUPInstanceSecurityGroup": {
+        "Type": "AWS::EC2::SecurityGroup",
+        "Properties": {
+          "GroupDescription": "Security group for EC2 instance allowing SSH",
+          "VpcId": {
+            "Ref": "KE2EFSFUPVPC"
+          },
+          "SecurityGroupIngress": [
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 22,
+              "ToPort": 22,
+              "CidrIp": "0.0.0.0/0"
+            }
+          ],
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "KE2EFSFUPInstanceSecurityGroup"
+            }
+          ]
+        }
+      },
+      "KE2EFSFUPEFSSecurityGroup": {
+        "Type": "AWS::EC2::SecurityGroup",
+        "Properties": {
+          "GroupDescription": "Security group for EFS mount target allowing NFS (TCP 2049) access from EC2 instances",
+          "VpcId": {
+            "Ref": "KE2EFSFUPVPC"
+          },
+          "SecurityGroupIngress": [
+            {
+              "IpProtocol": "tcp",
+              "FromPort": 2049,
+              "ToPort": 2049,
+              "SourceSecurityGroupId": {
+                "Ref": "KE2EFSFUPInstanceSecurityGroup"
+              }
+            }
+          ],
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "KE2EFSFUPEFSSecurityGroup"
+            }
+          ]
+        }
+      },
+      "KE2EFSFUPEFSMountTarget": {
+        "Type": "AWS::EFS::MountTarget",
+        "Properties": {
+          "FileSystemId": {
+            "Ref": "EFSFileSystemId"
+          },
+          "SubnetId": {
+            "Ref": "KE2EFSFUPPublicSubnet"
+          },
+          "SecurityGroups": [
+            {
+              "Ref": "KE2EFSFUPEFSSecurityGroup"
+            }
+          ]
+        }
+      },
+      "KE2EFSFUPEC2Instance": {
+        "Type": "AWS::EC2::Instance",
+        "Properties": {
+          "InstanceType": {
+            "Ref": "InstanceType"
+          },
+          "KeyName": {
+            "Ref": "KeyName"
+          },
+          "ImageId":{
+            "Ref": "InstanceImageId"
+          },
+          "NetworkInterfaces": [
+            {
+              "AssociatePublicIpAddress": true,
+              "DeviceIndex": "0",
+              "SubnetId": {
+                "Ref": "KE2EFSFUPPublicSubnet"
+              },
+              "GroupSet": [
+                {
+                  "Ref": "KE2EFSFUPInstanceSecurityGroup"
+                }
+              ]
+            }
+          ],
+          "UserData": {
+            "Fn::Base64": {
+              "Fn::Sub": "#!/bin/bash\nyum update -y\n# Install amazon-efs-utils for mounting EFS\nyum install -y amazon-efs-utils\nmkdir -p /mnt/efs"
+            }
+          },
+          "Tags": [
+            {
+              "Key": "Name",
+              "Value": "KE2EFSFUPEC2Instance"
+            }
+          ]
+        }
+      }
+    }
+  }
+  
