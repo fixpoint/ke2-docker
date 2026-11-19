@@ -1,5 +1,7 @@
 2026-11-19  Ichiro TAKAHASHI  <takahashi@fixpoint.co.jp>
 
+	* UPDATE-NOTES.md に、nginx の脆弱性 (CVE-2026-118899) に対応したリリースへのアップデート時の注意点を追記しました。脆弱性の概要、構成ごとに手順と影響が違うため公開資料を参照すること、2024/07/18 (2.0.0) で構築した標準シングル構成と ACI 構成での対応、nginx の指定を書き換えた環境を git で更新するときの注意を記載しています。あわせて、docker-compose.custom.yml をアップデートのたびに作り直すことを、その他の注意点に加えました。(#155)
+
 	* アップデート時の注意点をリリースを横断してまとめた UPDATE-NOTES.md を追加し、README.md と RELEASE-NOTES.md から参照するようにしました。あわせて、RELEASE-NOTES.md の 2024/10/16 (2.0.2) の節に、標準シングル構成の PostgreSQL 16 への更新とボリュームの変更、2.0.0 からの更新時の注意を追記しました。(#157)
 
 	* nginx の脆弱性 (CVE-2026-118899 ほか) に対応するため、nginx のコンテナイメージを nginx:1.30-alpine に更新しました。single / cluster 構成 (ke2/services/nginx.yml) は 1.27-alpine から、ACI 構成 (ke2/cloud/azureci/aci-deployment.json) は 1.25-alpine からの更新です。従来のタグは更新が止まっていて、pull し直しても修正版にならないため、タグそのものを変えています。(#155)
