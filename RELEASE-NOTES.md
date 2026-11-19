@@ -3,6 +3,21 @@
 アップデートの際は、[アップデート時の注意点](UPDATE-NOTES.md) もあわせて確認してください。
 
 ---
+## 2026/11/20 (2.0.5-latest)
+### コンテナイメージ
+- nginx の脆弱性 (CVE-2026-118899 ほか) に対応するため、nginx のコンテナイメージを nginx:1.30-alpine に更新しました。
+    - single/basic・single/extdb・cluster/swarm 構成 (ke2/services/nginx.yml): nginx:1.27-alpine から更新
+    - ACI 構成 (ke2/cloud/azureci/aci-deployment.json): nginx:1.25-alpine から更新
+    - これまでのタグは更新が止まっていて、イメージを取得し直しても修正版にならないため、タグそのものを変えています。
+
+### その他
+- アップデート時の注意点をリリースを横断してまとめた [UPDATE-NOTES.md](UPDATE-NOTES.md) を追加し、README.md とこのリリースノートから参照するようにしました。
+- 2024/10/16 (2.0.2) の節に、標準シングル構成の PostgreSQL 16 への更新とボリュームの変更を追記しました。
+
+### アップデート時の注意
+- **【重要】このリリースより前のリリースで構築した KE2 は、構成にかかわらず、nginx の脆弱性 (CVE-2026-118899) の影響を受けます。** 対応の手順と作業中の影響は構成によって異なり、2024/07/18 (2.0.0) で構築した標準シングル構成では ke2-docker を更新してはいけない場合もあります。作業の前に、[アップデート時の注意点](UPDATE-NOTES.md) の「2026/11/20 (2.0.5-latest)」の節と、公開資料「[nginx の脆弱性 (CVE-2026-118899) による Kompira Enterprise 2.0.x への影響と対処](https://docbase.io/posts/4273375/sharing/d98da45e-a4b8-49ac-bffb-a10f2c074ebf)」を確認してください。
+
+---
 ## 2026/07/17 (2.0.5-latest)
 ### 変更
 - 外部のデータベース/RabbitMQ に接続する構成で、その接続先 URL が未指定の場合に、docker compose の起動段階で即座にエラー停止するようにしました。
