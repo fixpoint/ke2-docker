@@ -188,7 +188,7 @@
           {
             "name": "nginx",
             "properties": {
-              "image": "registry.hub.docker.com/library/nginx:1.25-alpine",
+              "image": "registry.hub.docker.com/library/nginx:1.30-alpine",
               "resources": {
                 "requests": {
                   "cpu": 0.5,
