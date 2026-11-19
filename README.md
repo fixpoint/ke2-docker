@@ -81,6 +81,8 @@ Kompira の使用には、ライセンス登録が必要です。詳しくは [l
 
 KE2.0 のデプロイ手順などの管理手順については [KE2.0管理者マニュアル](https://fixpoint.github.io/ke2-admin-manual/) を参考にしてみてください。
 
+KE2.0 をアップデートする際は、[リリースノート](RELEASE-NOTES.md) と [アップデート時の注意点](UPDATE-NOTES.md) もあわせて確認してください。
+
 ### 6.2. Kompira 運用自動化コラム
 
 Kompira の実践的な使い方やジョブフローの書き方については [運用自動化コラム](https://www.kompira.jp/column/) を参考にしてみてください。
